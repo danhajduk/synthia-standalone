@@ -1,8 +1,6 @@
-<<<<<<< HEAD
-ARG BUILD_FROM
-FROM ${BUILD_FROM}
+FROM python:3.11-slim
 
-ENV LANG C.UTF-8
+ENV LANG=C.UTF-8
 
 RUN apk add --no-cache python3 py3-pip build-base libffi-dev
 
@@ -17,12 +15,12 @@ RUN chmod a+x /run.sh
 COPY app /app
 
 CMD [ "/run.sh" ]
-=======
+
 # Use a lightweight Python image
 FROM python:3.11-slim
 
 # Set environment variables
-ENV LANG C.UTF-8
+ENV LANG=C.UTF-8
 
 # Install required system packages
 RUN apt-get update && \
@@ -52,4 +50,3 @@ EXPOSE 5010
 
 # Start the FastAPI app
 CMD ["./run.sh"]
->>>>>>> 3d82a04 (Initial commit of Synthia standalone Docker app)

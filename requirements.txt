@@ -1,15 +1,12 @@
 fastapi
-<<<<<<< HEAD
 uvicorn
 google-api-python-client
 google-auth
 google-auth-oauthlib
 openai
-=======
 uvicorn[standard]
 openai
 google-api-python-client
 google-auth
 google-auth-oauthlib
 requests
->>>>>>> 3d82a04 (Initial commit of Synthia standalone Docker app)
