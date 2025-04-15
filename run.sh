@@ -5,6 +5,6 @@ export OPENAI_API_KEY="$OPENAI_API_KEY"
 export OPENAI_ADMIN_API_KEY="$OPENAI_ADMIN_API_KEY"
 
 # Start the FastAPI app via uvicorn
-uvicorn main:app --host 0.0.0.0 --port 5000
-uvicorn app.main:app --host 0.0.0.0 --port 5010
+#!/usr/bin/env bash
+uvicorn main:app --host 0.0.0.0 --port 5010
 

@@ -1,21 +1,3 @@
-FROM python:3.11-slim
-
-ENV LANG=C.UTF-8
-
-RUN apk add --no-cache python3 py3-pip build-base libffi-dev
-
-WORKDIR /app
-
-COPY requirements.txt ./
-RUN pip install --break-system-packages -r requirements.txt
-
-COPY run.sh /run.sh
-RUN chmod a+x /run.sh
-
-COPY app /app
-
-CMD [ "/run.sh" ]
-
 # Use a lightweight Python image
 FROM python:3.11-slim
 
@@ -32,21 +14,19 @@ RUN apt-get update && \
 # Set working directory
 WORKDIR /app
 
-COPY app/static ./static
+# Copy app files (including gmail_service.py, main.py, static/, etc.)
+COPY app /app
 
-# Copy requirements and install Python packages
+# Copy requirements and install dependencies
 COPY requirements.txt ./
-RUN pip install --no-cache-dir --break-system-packages -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy all app files and startup script
-COPY . .
+# Copy startup script
+COPY run.sh /run.sh
+RUN chmod +x /run.sh
 
-
-# Make sure run.sh is executable
-RUN chmod +x run.sh
-
-# Expose the correct port
+# Expose app port
 EXPOSE 5010
 
-# Start the FastAPI app
-CMD ["./run.sh"]
+# Run the app
+CMD ["/run.sh"]

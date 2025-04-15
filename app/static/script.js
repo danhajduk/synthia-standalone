@@ -13,11 +13,14 @@ function loadSection(section) {
     })
     .then(html => {
       content.innerHTML = html;
+
       if (section === 'settings') {
         startWatchdog();
       } else if (section === 'gmail') {
         fetchGmailUnread();
         loadStoredEmails();
+      } else if (section === 'ai') {
+        loadAiUsage();
       }
     })
     .catch(error => {
@@ -59,85 +62,128 @@ function startWatchdog() {
 }
 
 function fetchGmailUnread() {
-    const base = window.location.pathname.replace(/\/$/, "");
-    fetch(`${base}/api/gmail/unread`)
-      .then(res => res.json())
-      .then(data => {
-        document.getElementById('gmail-unread-today').textContent = data.unread_today ?? '–';
-      })
-      .catch(err => {
-        console.error("Gmail fetch error:", err);
-        document.getElementById('gmail-unread-today').textContent = "Error";
-      });
-  }
-
-  function fetchAndStoreEmails() {
-    const base = window.location.pathname.replace(/\/$/, "");
-    const resultDiv = document.getElementById("gmail-fetch-result");
-    resultDiv.textContent = "Fetching... ⏳";
-  
-    fetch(`${base}/api/gmail/fetch`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.fetched !== undefined) {
-          resultDiv.textContent = `✅ Fetched and stored ${data.fetched} email(s).`;
-        } else {
-          resultDiv.textContent = `⚠️ Error: ${data.error}`;
-        }
-      })
-      .catch(err => {
-        console.error("Fetch error:", err);
-        resultDiv.textContent = "❌ Failed to fetch emails.";
-      });
-  }
-
-  function loadStoredEmails() {
-    const base = window.location.pathname.replace(/\/$/, "");
-    const body = document.getElementById("gmail-email-body");
-    body.innerHTML = `<tr><td colspan="2">Loading...</td></tr>`;
-  
-    fetch(`${base}/api/gmail/list`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.emails?.length) {
-          body.innerHTML = "";
-          data.emails.forEach(email => {
-            const row = document.createElement("tr");
-            row.innerHTML = `<td>${email.sender}</td><td>${email.subject}</td>`;
-            body.appendChild(row);
-          });
-        } else {
-          body.innerHTML = `<tr><td colspan="2">No emails stored.</td></tr>`;
-        }
-      })
-      .catch(err => {
-        console.error("Load email list error:", err);
-        body.innerHTML = `<tr><td colspan="2">Failed to load email list.</td></tr>`;
-      });
-  }
-  
-  function sendChat() {
-    const base = window.location.pathname.replace(/\/$/, "");
-    const input = document.getElementById("chat-input");
-    const output = document.getElementById("chat-output");
-  
-    const message = input.value.trim();
-    if (!message) return;
-  
-    output.textContent = "Thinking... 🤖";
-  
-    fetch(`${base}/api/openai/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message })
+  const base = window.location.pathname.replace(/\/$/, "");
+  fetch(`${base}/api/gmail/unread`)
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById('gmail-unread-today').textContent = data.unread_today ?? '–';
     })
-      .then(res => res.json())
-      .then(data => {
-        output.textContent = data.reply ?? `⚠️ ${data.error}`;
-      })
-      .catch(err => {
-        console.error(err);
-        output.textContent = "❌ Failed to get a response.";
-      });
-  }
-  
+    .catch(err => {
+      console.error("Gmail fetch error:", err);
+      document.getElementById('gmail-unread-today').textContent = "Error";
+    });
+}
+
+function fetchAndStoreEmails() {
+  const base = window.location.pathname.replace(/\/$/, "");
+  const resultDiv = document.getElementById("gmail-fetch-result");
+  resultDiv.textContent = "Fetching... ⏳";
+
+  fetch(`${base}/api/gmail/fetch`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.fetched !== undefined) {
+        resultDiv.textContent = `✅ Fetched and stored ${data.fetched} email(s).`;
+      } else {
+        resultDiv.textContent = `⚠️ Error: ${data.error}`;
+      }
+    })
+    .catch(err => {
+      console.error("Fetch error:", err);
+      resultDiv.textContent = "❌ Failed to fetch emails.";
+    });
+}
+
+function loadStoredEmails() {
+  const base = window.location.pathname.replace(/\/$/, "");
+  const body = document.getElementById("gmail-email-body");
+  body.innerHTML = `<tr><td colspan="2">Loading...</td></tr>`;
+
+  fetch(`${base}/api/gmail/list`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.emails?.length) {
+        body.innerHTML = "";
+        data.emails.forEach(email => {
+          const row = document.createElement("tr");
+          row.innerHTML = `
+          <td>${email.sender}</td>
+          <td>${email.sender_email}</td>
+          <td>${email.subject}</td>
+          <td>
+            <select onchange="updateEmailCategory('${email.id}', this.value)">
+              <option value="Uncategorized"${email.category === 'Uncategorized' ? ' selected' : ''}>Uncategorized</option>
+              <option value="Important"${email.category === 'Important' ? ' selected' : ''}>Important</option>
+              <option value="Regular"${email.category === 'Regular' ? ' selected' : ''}>Regular</option>
+              <option value="Spam"${email.category === 'Spam' ? ' selected' : ''}>Spam</option>
+            </select>
+          </td>
+        `;
+                  body.appendChild(row);
+        });
+      } else {
+        body.innerHTML = `<tr><td colspan="2">No emails stored.</td></tr>`;
+      }
+    })
+    .catch(err => {
+      console.error("Load email list error:", err);
+      body.innerHTML = `<tr><td colspan="2">Failed to load email list.</td></tr>`;
+    });
+}
+
+function sendChat() {
+  const base = window.location.pathname.replace(/\/$/, "");
+  const input = document.getElementById("chat-input");
+  const output = document.getElementById("chat-output");
+
+  const message = input.value.trim();
+  if (!message) return;
+
+  output.textContent = "Thinking... 🤖";
+
+  fetch(`${base}/api/openai/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ message })
+  })
+    .then(res => res.json())
+    .then(data => {
+      output.textContent = data.reply ?? `⚠️ ${data.error}`;
+    })
+    .catch(err => {
+      console.error(err);
+      output.textContent = "❌ Failed to get a response.";
+    });
+}
+
+// New function to fetch monthly OpenAI usage stats
+function loadAiUsage() {
+  const base = window.location.pathname.replace(/\/$/, "");
+  fetch(`${base}/api/ai/usage`)
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById("this-month-cost").textContent = data.this_month?.toFixed(4) ?? "–";
+      document.getElementById("last-month-cost").textContent = data.last_month?.toFixed(4) ?? "–";
+    })
+    .catch(err => {
+      console.error("AI usage fetch error:", err);
+    });
+}
+function updateEmailCategory(emailId, category) {
+  const base = window.location.pathname.replace(/\/$/, "");
+  fetch(`${base}/api/gmail/categorize`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: emailId, category })
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status !== "updated") {
+        alert("Failed to update category.");
+      }
+    })
+    .catch(err => {
+      console.error("Update category error:", err);
+      alert("Failed to update category.");
+    });
+}
