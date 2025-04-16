@@ -1,46 +1,43 @@
+# Import necessary modules and utilities
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from datetime import datetime
-import sqlite3
-from gmail_service import GmailService
-from utils.database import get_db_path
-import logging
-from datetime import datetime, time
-import pytz
 from pydantic import BaseModel
-from fastapi import APIRouter
-from fastapi.responses import JSONResponse
+from datetime import datetime, time
 import sqlite3
 import logging
+import pytz
+
+# Import custom utilities
+from gmail_service import GmailService
 from utils.database import get_db_path
 from utils.classifier import classify_email_batch
 
+# Initialize router and logging
 router = APIRouter()
 db_path = get_db_path()
 logging.basicConfig(level=logging.INFO)
 
+# Define request model for category updates
 class CategoryUpdate(BaseModel):
     id: str
     category: str
 
+# Endpoint to update email category
 @router.post("/categorize")
 def update_category(data: CategoryUpdate):
     try:
         logging.info(f"🔧 Updating category: {data.id} → {data.category}")
-
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute("UPDATE emails SET category = ? WHERE id = ?", (data.category, data.id))
         conn.commit()
         conn.close()
-
         return JSONResponse({"status": "updated"})
     except Exception as e:
         logging.error(f"❌ Failed to update category: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-
-
+# Endpoint to fetch and store Gmail emails
 @router.get("/fetch")
 def fetch_and_store_gmail():
     try:
@@ -61,19 +58,16 @@ def fetch_and_store_gmail():
                 VALUES (?, ?, ?, ?)""",
                 (email["id"], email["sender"], email["email"], email["subject"])
             )
-        # Update sender reputation)
-            logging.debug('Email received: {}'.format(email["email"]))
+            logging.debug(f"Email received: {email['email']}")
 
         conn.commit()
         conn.close()
-
         return JSONResponse({"fetched": len(emails)})
-
     except Exception as e:
         logging.error(f"❌ Error during Gmail fetch: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-
+# Endpoint to debug recent email entries
 @router.get("/debug")
 def debug_email_entries():
     try:
@@ -85,9 +79,10 @@ def debug_email_entries():
 
         emails = [{"id": r[0], "sender": r[1], "subject": r[2]} for r in rows]
         return JSONResponse({"recent_emails": emails})
-
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+# Endpoint to get unread emails since midnight
 @router.get("/unread")
 def get_unread_today():
     try:
@@ -107,24 +102,16 @@ def get_unread_today():
         unread_today = response.get("resultSizeEstimate", 0)
 
         return JSONResponse({"unread_today": unread_today})
-
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+# Endpoint to list stored emails
 @router.get("/list")
 def list_stored_emails():
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
-        # Print the table structure (still helpful)
-        cursor.execute("PRAGMA table_info(emails);")
-        columns = cursor.fetchall()
-        # print("📊 Table structure for 'emails':")
-        # for col in columns:
-        #     print(f"  - {col[1]} ({col[2]})")
-
-        # ✅ Use correct column name: sender_email
         cursor.execute("SELECT id, sender, sender_email, subject, category FROM emails ORDER BY rowid DESC LIMIT 100")
         rows = cursor.fetchall()
         conn.close()
@@ -138,10 +125,10 @@ def list_stored_emails():
         } for r in rows]
 
         return JSONResponse(content={"emails": emails})
-
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+# Endpoint to clear all tables
 @router.post("/clear")
 @router.get("/clear")
 def clear_all_tables():
@@ -155,7 +142,8 @@ def clear_all_tables():
         return JSONResponse({"status": "success", "message": "All tables cleared."})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
-# New endpoint to trigger classification manually
+
+# Endpoint to trigger email classification manually
 @router.post("/classify")
 def trigger_classification():
     try:

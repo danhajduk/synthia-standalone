@@ -1,5 +1,7 @@
+<!-- AI assistant header -->
 <h2>AI Assistant</h2>
 
+<!-- Display OpenAI usage statistics -->
 <div id="ai-usage">
   <div class="usage-box">
     <strong>This Month:</strong> $<span id="this-month-cost">0.00</span>
@@ -9,9 +11,13 @@
   </div>
 </div>
 
+<!-- Chat section -->
 <div id="chat-section">
   <h3>Chat with Synthia</h3>
+  <!-- Input for user message -->
   <textarea id="chat-input" rows="4" style="width: 100%;"></textarea><br />
+  <!-- Button to send the message -->
   <button onclick="sendChat()">Send</button>
+  <!-- Placeholder for the assistant's response -->
   <div id="chat-output" style="margin-top: 20px;"></div>
 </div>

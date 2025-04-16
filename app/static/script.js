@@ -1,8 +1,12 @@
-let watchdogInterval;
+let watchdogInterval; // Interval for the watchdog status checker
 
+/**
+ * Dynamically loads a section of the application.
+ * Fetches the corresponding HTML file and updates the content area.
+ */
 function loadSection(section) {
   const content = document.getElementById('content');
-  if (watchdogInterval) clearInterval(watchdogInterval);
+  if (watchdogInterval) clearInterval(watchdogInterval); // Clear watchdog if switching sections
 
   fetch(`static/pages/${section}.html`)
     .then(response => {
@@ -14,6 +18,7 @@ function loadSection(section) {
     .then(html => {
       content.innerHTML = html;
 
+      // Initialize specific logic for certain sections
       if (section === 'settings') {
         startWatchdog();
       } else if (section === 'gmail') {
@@ -29,6 +34,9 @@ function loadSection(section) {
     });
 }
 
+/**
+ * Fetches a test message from the backend and displays it.
+ */
 async function getMessage() {
   const base = window.location.pathname.replace(/\/$/, "");
   const res = await fetch(`${base}/api/hello`);
@@ -36,6 +44,9 @@ async function getMessage() {
   document.getElementById("message").textContent = data.message;
 }
 
+/**
+ * Starts the watchdog to periodically check the backend status.
+ */
 function startWatchdog() {
   const base = window.location.pathname.replace(/\/$/, "");
   const statusCircle = document.getElementById("watchdog-status");
@@ -57,10 +68,13 @@ function startWatchdog() {
     }
   }
 
-  ping(); // immediate check
-  watchdogInterval = setInterval(ping, 20000); // every 20 seconds
+  ping(); // Immediate status check
+  watchdogInterval = setInterval(ping, 20000); // Check every 20 seconds
 }
 
+/**
+ * Fetches the count of unread Gmail emails for today.
+ */
 function fetchGmailUnread() {
   const base = window.location.pathname.replace(/\/$/, "");
   fetch(`${base}/api/gmail/unread`)
@@ -74,6 +88,9 @@ function fetchGmailUnread() {
     });
 }
 
+/**
+ * Fetches and stores Gmail emails, then triggers classification.
+ */
 function fetchAndStoreEmails() {
   const base = window.location.pathname.replace(/\/$/, "");
   const resultDiv = document.getElementById("gmail-fetch-result");
@@ -90,7 +107,7 @@ function fetchAndStoreEmails() {
           .then(res => res.json())
           .then(classifyData => {
             resultDiv.textContent += ` ✅ Classified ${classifyData.classified} email(s).`;
-            loadStoredEmails();  // Refresh the table after classification
+            loadStoredEmails(); // Refresh the table after classification
           })
           .catch(err => {
             console.error("Classification error:", err);
@@ -106,6 +123,9 @@ function fetchAndStoreEmails() {
     });
 }
 
+/**
+ * Loads the list of stored Gmail emails and displays them in a table.
+ */
 function loadStoredEmails() {
   const base = window.location.pathname.replace(/\/$/, "");
   const body = document.getElementById("gmail-email-body");
@@ -120,7 +140,7 @@ function loadStoredEmails() {
           const row = document.createElement("tr");
           row.innerHTML = `
             <td>${email.sender}</td>
-            <td>${email.email}</td>  <!-- fixed -->
+            <td>${email.email}</td>
             <td>${email.subject}</td>
             <td>
               <select onchange="updateEmailCategory('${email.id}', this.value)">
@@ -130,12 +150,9 @@ function loadStoredEmails() {
                 <option value="Regular"${email.category === 'Regular' ? ' selected' : ''}>📬 Regular Mail</option>
                 <option value="Spam"${email.category === 'Suspected Spam' ? ' selected' : ''}>🚫 Suspected Spam</option>
               </select>
-              </select>
-              </select>
             </td>
           `;
-
-        body.appendChild(row);
+          body.appendChild(row);
         });
       } else {
         body.innerHTML = `<tr><td colspan="2">No emails stored.</td></tr>`;
@@ -147,6 +164,9 @@ function loadStoredEmails() {
     });
 }
 
+/**
+ * Sends a chat message to the AI assistant and displays the response.
+ */
 function sendChat() {
   const base = window.location.pathname.replace(/\/$/, "");
   const input = document.getElementById("chat-input");
@@ -172,7 +192,9 @@ function sendChat() {
     });
 }
 
-// New function to fetch monthly OpenAI usage stats
+/**
+ * Fetches and displays monthly OpenAI usage statistics.
+ */
 function loadAiUsage() {
   const base = window.location.pathname.replace(/\/$/, "");
   fetch(`${base}/api/ai/usage`)
@@ -185,6 +207,10 @@ function loadAiUsage() {
       console.error("AI usage fetch error:", err);
     });
 }
+
+/**
+ * Updates the category of a specific email.
+ */
 function updateEmailCategory(emailId, category) {
   const base = window.location.pathname.replace(/\/$/, "");
   fetch(`${base}/api/gmail/categorize`, {

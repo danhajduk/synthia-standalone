@@ -10,7 +10,13 @@ from email.utils import parseaddr  # ✅ Robust email parser
 logging.basicConfig(level=logging.INFO)
 
 class GmailService:
+    """
+    A service for interacting with the Gmail API to fetch and parse emails.
+    """
     def __init__(self, token_path: str = "token.json"):
+        """
+        Initializes the Gmail service with the provided token file.
+        """
         self.creds = Credentials.from_authorized_user_file(
             token_path,
             ["https://www.googleapis.com/auth/gmail.readonly"]
@@ -18,6 +24,17 @@ class GmailService:
         self.service = build("gmail", "v1", credentials=self.creds)
 
     def fetch_emails(self, since: str = None, unread_only: bool = False, max_results: int = 100):
+        """
+        Fetches emails from the Gmail API based on the provided filters.
+
+        Args:
+            since (str): Fetch emails received after this date.
+            unread_only (bool): Whether to fetch only unread emails.
+            max_results (int): Maximum number of emails to fetch.
+
+        Returns:
+            list: A list of parsed email data.
+        """
         query_parts = []
 
         if since:
@@ -41,6 +58,7 @@ class GmailService:
 
         messages = []
         try:
+            # Fetch messages from Gmail
             response = self.service.users().messages().list(
                 userId="me", q=query, maxResults=max_results
             ).execute()
@@ -49,6 +67,7 @@ class GmailService:
             messages.extend(batch)
             logging.info(f"📦 Fetched {len(batch)} messages (initial batch)")
 
+            # Handle pagination
             while 'nextPageToken' in response:
                 response = self.service.users().messages().list(
                     userId="me", q=query, pageToken=response['nextPageToken']
@@ -61,6 +80,7 @@ class GmailService:
             logging.error(f"❌ Gmail API error: {e}")
             raise Exception(f"Gmail API error: {e}")
 
+        # Parse email metadata
         email_data = []
         for msg in messages:
             try:
@@ -73,7 +93,6 @@ class GmailService:
                 headers = {h['name']: h['value'] for h in msg_data['payload']['headers']}
                 sender_raw = headers.get('From', 'Unknown')
                 subject = headers.get('Subject', '(No Subject)')
-
 
                 logging.debug(f"🧪 Raw From header: {sender_raw}")
                 # ✅ Use robust parser for name + email
