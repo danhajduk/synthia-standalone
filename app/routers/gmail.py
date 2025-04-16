@@ -230,8 +230,11 @@ def debug_fetch_14_days():
 def debug_classify_all():
     from utils.classifier import classify_email_batch
     total_classified = 0
-
+    counter = 0
     while True:
+        # Classify emails in batches
+        counter += 1
+        logging.info(f"🔄 Classifying batch {counter} : ({counter * 20})")
         result = classify_email_batch()
         if not result or len(result) == 0:
             break
