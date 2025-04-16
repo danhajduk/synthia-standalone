@@ -192,6 +192,23 @@ def trigger_classification():
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
+@router.get("/stats")
+def get_email_stats():
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT COUNT(*) FROM emails")
+        total = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM emails WHERE category IS NULL OR category = 'Uncategorized'")
+        uncategorized = cursor.fetchone()[0]
+
+        conn.close()
+        return JSONResponse({"total": total, "uncategorized": uncategorized})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
 #######################################3
 # Debug section 
 ########################################

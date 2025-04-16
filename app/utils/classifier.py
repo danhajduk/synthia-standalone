@@ -12,9 +12,22 @@ openai.api_key = os.getenv("OPENAI_API_KEY")
 db_path = get_db_path()
 
 def classify_email_batch():
+    """
+    Classifies a batch of unclassified emails using OpenAI's assistant and updates their categories in the database.
+
+    This function:
+    - Fetches up to 20 unclassified emails from the database.
+    - Filters emails using Spamhaus to flag potential spam.
+    - Sends the remaining emails to OpenAI for classification.
+    - Updates the database with the classification results.
+
+    Returns:
+        list: A list of classified emails with their updated categories.
+    """
     try:
         assistant_id = "asst_HCLbiRcnBGBuK40Ax5jxkRcB"
         logging.info("🧠 Classifying emails...")
+
         # Fetch unclassified emails
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
@@ -65,7 +78,6 @@ def classify_email_batch():
             "• Data – Emails that include appointments, tasks, reminders, receipts, or other structured actionable content.\n"
             "• Regular – General correspondence, newsletters, updates, or messages that do not require action.\n"
             "• Suspected Spam – Unwanted promotional or suspicious content.\n"
-            "• Uncategorized – If the category is unclear based on the subject and sender.\n\n"
             "The output should be a raw JSON array of objects with 'id' and 'category'."
         )
 
@@ -121,7 +133,15 @@ def classify_email_batch():
 
 
 def check_sender_spamhaus(email):
-    # Extract domain from sender email
+    """
+    Checks if the sender's domain is listed in Spamhaus DBL.
+
+    Args:
+        email (str): The sender's email address.
+
+    Returns:
+        bool: True if the domain is listed in Spamhaus DBL, False otherwise.
+    """
     if "@" not in email:
         return False
     domain = email.split("@")[1].lower()

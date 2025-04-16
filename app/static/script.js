@@ -21,6 +21,7 @@ function loadSection(section) {
       // Initialize specific logic for certain sections
       if (section === 'settings') {
         startWatchdog();
+        loadEmailStats();  // ← Add this line
       } else if (section === 'gmail') {
         fetchGmailUnread();
         loadStoredEmails();
@@ -268,6 +269,23 @@ function clearAllTables() {
     });
 }
 
+function loadEmailStats() {
+  const base = window.location.pathname.replace(/\/$/, "");
+  const statsTotal = document.getElementById("email-total");
+  const statsUncat = document.getElementById("email-uncategorized");
+
+  fetch(`${base}/api/gmail/stats`)
+    .then(res => res.json())
+    .then(data => {
+      statsTotal.textContent = data.total ?? "–";
+      statsUncat.textContent = data.uncategorized ?? "–";
+    })
+    .catch(err => {
+      console.error("Stats fetch error:", err);
+      statsTotal.textContent = "❌";
+      statsUncat.textContent = "❌";
+    });
+}
 
 // Debug section
 

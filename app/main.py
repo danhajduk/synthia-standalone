@@ -1,16 +1,15 @@
-# Import necessary modules and libraries
+# Standard library imports
+from pathlib import Path
+import os
+import logging
+
+# Third-party imports
 from fastapi import APIRouter, FastAPI
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from pathlib import Path
 import openai
-import os
-import logging
-import time
-import json
-import sqlite3
 
-# Import application-specific modules
+# Application-specific imports
 from routers import gmail, openai_routes, system
 from utils.database import initialize_database, get_db_path
 
@@ -39,7 +38,6 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(system.router)  # System-related routes
 app.include_router(gmail.router, prefix="/api/gmail")  # Gmail-related routes
 app.include_router(openai_routes.router, prefix="/api/openai")  # OpenAI-related routes
-app.include_router(openai_routes.router_ai, prefix="/api/ai")  # AI-specific routes
 
 # Serve the main UI page (index.html) at the root endpoint
 @app.get("/")
