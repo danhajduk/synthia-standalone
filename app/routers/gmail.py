@@ -13,6 +13,7 @@ from fastapi.responses import JSONResponse
 import sqlite3
 import logging
 from utils.database import get_db_path
+from utils.classifier import classify_email_batch
 
 router = APIRouter()
 db_path = get_db_path()
@@ -56,11 +57,12 @@ def fetch_and_store_gmail():
 
         for email in emails:
             cursor.execute("""
-                INSERT OR REPLACE INTO emails (id, sender, sender_email, subject)
+                INSERT OR IGNORE INTO emails (id, sender, sender_email, subject)
                 VALUES (?, ?, ?, ?)""",
                 (email["id"], email["sender"], email["email"], email["subject"])
             )
-            logging.info('Email received: {}'.format(email["email"]))
+        # Update sender reputation)
+            logging.debug('Email received: {}'.format(email["email"]))
 
         conn.commit()
         conn.close()
@@ -118,9 +120,9 @@ def list_stored_emails():
         # Print the table structure (still helpful)
         cursor.execute("PRAGMA table_info(emails);")
         columns = cursor.fetchall()
-        print("📊 Table structure for 'emails':")
-        for col in columns:
-            print(f"  - {col[1]} ({col[2]})")
+        # print("📊 Table structure for 'emails':")
+        # for col in columns:
+        #     print(f"  - {col[1]} ({col[2]})")
 
         # ✅ Use correct column name: sender_email
         cursor.execute("SELECT id, sender, sender_email, subject, category FROM emails ORDER BY rowid DESC LIMIT 100")
@@ -151,5 +153,13 @@ def clear_all_tables():
         conn.commit()
         conn.close()
         return JSONResponse({"status": "success", "message": "All tables cleared."})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+# New endpoint to trigger classification manually
+@router.post("/classify")
+def trigger_classification():
+    try:
+        result = classify_email_batch()
+        return JSONResponse({"classified": len(result) if result else 0})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})

@@ -83,7 +83,19 @@ function fetchAndStoreEmails() {
     .then(res => res.json())
     .then(data => {
       if (data.fetched !== undefined) {
-        resultDiv.textContent = `✅ Fetched and stored ${data.fetched} email(s).`;
+        resultDiv.textContent = `✅ Fetched and stored ${data.fetched} email(s). Classifying...`;
+
+        // Trigger classification
+        fetch(`${base}/api/gmail/classify`, { method: "POST" })
+          .then(res => res.json())
+          .then(classifyData => {
+            resultDiv.textContent += ` ✅ Classified ${classifyData.classified} email(s).`;
+            loadStoredEmails();  // Refresh the table after classification
+          })
+          .catch(err => {
+            console.error("Classification error:", err);
+            resultDiv.textContent += " ❌ Classification failed.";
+          });
       } else {
         resultDiv.textContent = `⚠️ Error: ${data.error}`;
       }
@@ -112,10 +124,12 @@ function loadStoredEmails() {
             <td>${email.subject}</td>
             <td>
               <select onchange="updateEmailCategory('${email.id}', this.value)">
+                <option value="Uncategorized"${email.category === 'Uncategorized' ? ' selected' : ''}>❓ Uncategorized</option>
                 <option value="Important"${email.category === 'Important' ? ' selected' : ''}>📌 Important</option>
                 <option value="Data"${email.category === 'Data' ? ' selected' : ''}>📊 Data</option>
                 <option value="Regular"${email.category === 'Regular' ? ' selected' : ''}>📬 Regular Mail</option>
-                <option value="Spam"${email.category === 'Spam' ? ' selected' : ''}>🚫 Suspected Spam</option>
+                <option value="Spam"${email.category === 'Suspected Spam' ? ' selected' : ''}>🚫 Suspected Spam</option>
+              </select>
               </select>
               </select>
             </td>

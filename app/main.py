@@ -1,31 +1,43 @@
-from fastapi import APIRouter
-from fastapi.responses import JSONResponse
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, FastAPI
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+import openai
+import os
+import logging
+import time
+import json
+import sqlite3
 
 from routers import gmail, openai_routes, system
-from utils.database import initialize_database
+from utils.database import initialize_database, get_db_path
 
-router = APIRouter()
+# Setup logging
+logging.basicConfig(level=logging.INFO)
 
-# Ensure data directory and initialize schema
+# Initialize OpenAI API key
+openai.api_key = os.getenv("OPENAI_API_KEY")
+
+# Initialize database
 initialize_database()
+db_path = get_db_path()
+
+# Define router (if needed for subroutes)
+router = APIRouter()
 
 # Initialize FastAPI app
 app = FastAPI()
 
-# Static files
+# Mount static files
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Mount routers
+# Include API routers
 app.include_router(system.router)
 app.include_router(gmail.router, prefix="/api/gmail")
 app.include_router(openai_routes.router, prefix="/api/openai")
 app.include_router(openai_routes.router_ai, prefix="/api/ai")
 
-# Serve main page
+# Serve main UI page
 @app.get("/")
 def index():
     return FileResponse("static/index.html")
