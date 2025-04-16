@@ -107,19 +107,21 @@ function loadStoredEmails() {
         data.emails.forEach(email => {
           const row = document.createElement("tr");
           row.innerHTML = `
-          <td>${email.sender}</td>
-          <td>${email.sender_email}</td>
-          <td>${email.subject}</td>
-          <td>
-            <select onchange="updateEmailCategory('${email.id}', this.value)">
-              <option value="Uncategorized"${email.category === 'Uncategorized' ? ' selected' : ''}>Uncategorized</option>
-              <option value="Important"${email.category === 'Important' ? ' selected' : ''}>Important</option>
-              <option value="Regular"${email.category === 'Regular' ? ' selected' : ''}>Regular</option>
-              <option value="Spam"${email.category === 'Spam' ? ' selected' : ''}>Spam</option>
-            </select>
-          </td>
-        `;
-                  body.appendChild(row);
+            <td>${email.sender}</td>
+            <td>${email.email}</td>  <!-- fixed -->
+            <td>${email.subject}</td>
+            <td>
+              <select onchange="updateEmailCategory('${email.id}', this.value)">
+                <option value="Important"${email.category === 'Important' ? ' selected' : ''}>📌 Important</option>
+                <option value="Data"${email.category === 'Data' ? ' selected' : ''}>📊 Data</option>
+                <option value="Regular"${email.category === 'Regular' ? ' selected' : ''}>📬 Regular Mail</option>
+                <option value="Spam"${email.category === 'Spam' ? ' selected' : ''}>🚫 Suspected Spam</option>
+              </select>
+              </select>
+            </td>
+          `;
+
+        body.appendChild(row);
         });
       } else {
         body.innerHTML = `<tr><td colspan="2">No emails stored.</td></tr>`;
