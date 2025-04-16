@@ -16,6 +16,8 @@ from utils.database import initialize_database, get_db_path
 
 # Setup logging configuration
 logging.basicConfig(level=logging.INFO)
+# Suppress httpx INFO logs
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 # Initialize OpenAI API key from environment variables
 openai.api_key = os.getenv("OPENAI_API_KEY")

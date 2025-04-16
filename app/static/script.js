@@ -229,3 +229,104 @@ function updateEmailCategory(emailId, category) {
       alert("Failed to update category.");
     });
 }
+
+function checkSpamhaus() {
+  const base = window.location.pathname.replace(/\/$/, "");
+  const resultDiv = document.getElementById("spamhaus-check-result");
+  resultDiv.textContent = "Checking... ⏳";
+
+  fetch(`${base}/api/gmail/check_spamhaus`)
+    .then(res => res.json())
+    .then(data => {
+      resultDiv.textContent = `🔍 Checked ${data.count} emails. See log for results.`;
+    })
+    .catch(err => {
+      console.error("Spamhaus check error:", err);
+      resultDiv.textContent = "❌ Error during check.";
+    });
+}
+
+function clearAllTables() {
+  const base = window.location.pathname.replace(/\/$/, "");
+  const status = document.getElementById("clear-all-status");
+  status.textContent = "⏳ Clearing...";
+
+  fetch(`${base}/api/clear_all_tables`, {
+    method: "POST"
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === "success") {
+        status.textContent = "✅ All tables cleared.";
+      } else {
+        status.textContent = `❌ ${data.error}`;
+      }
+    })
+    .catch(err => {
+      console.error("Clear error:", err);
+      status.textContent = "❌ Request failed.";
+    });
+}
+
+
+// Debug section
+
+function debugFetchBack14() {
+  const status = document.getElementById("debug-status");
+  status.textContent = "⏳ Fetching emails (last 14 days)...";
+
+  fetch("/api/gmail/debug/fetch14")
+    .then(res => res.json())
+    .then(data => {
+      status.textContent = `✅ Fetched ${data.fetched || 0} emails.`;
+    })
+    .catch(err => {
+      console.error(err);
+      status.textContent = "❌ Failed to fetch.";
+    });
+}
+
+function debugClassifyAll() {
+  const status = document.getElementById("debug-status");
+  status.textContent = "⏳ Classifying emails...";
+
+  fetch("/api/gmail/debug/classify-all")
+    .then(res => res.json())
+    .then(data => {
+      status.textContent = `✅ Classified ${data.total || 0} emails.`;
+    })
+    .catch(err => {
+      console.error(err);
+      status.textContent = "❌ Failed to classify.";
+    });
+}
+
+function debugCopyEmailTable() {
+  const status = document.getElementById("debug-status");
+  status.textContent = "⏳ Copying email table...";
+
+  fetch("/api/gmail/debug/backup", { method: "POST" })
+    .then(res => res.json())
+    .then(data => {
+      status.textContent = data.message || "✅ Backup complete.";
+    })
+    .catch(err => {
+      console.error(err);
+      status.textContent = "❌ Backup failed.";
+    });
+}
+
+function debugRestoreEmailTable() {
+  const status = document.getElementById("debug-status");
+  status.textContent = "⏳ Restoring email table...";
+
+  fetch("/api/gmail/debug/restore", { method: "POST" })
+    .then(res => res.json())
+    .then(data => {
+      status.textContent = data.message || "✅ Restore complete.";
+    })
+    .catch(err => {
+      console.error(err);
+      status.textContent = "❌ Restore failed.";
+    });
+}

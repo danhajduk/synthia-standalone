@@ -38,14 +38,13 @@ class GmailService:
         query_parts = []
 
         if since:
-            # Convert local midnight to UTC timestamp
-            local_tz = pytz.timezone("America/Los_Angeles")  # Adjust if needed
-            now_local = datetime.now(local_tz)
-            local_midnight = local_tz.localize(datetime.combine(now_local.date(), time.min))
+            local_tz = pytz.timezone("America/Los_Angeles")
+            since_date = datetime.strptime(since, "%Y-%m-%d")
+            local_midnight = local_tz.localize(datetime.combine(since_date, time.min))
             utc_midnight = local_midnight.astimezone(pytz.utc)
             timestamp = int(utc_midnight.timestamp())
 
-            logging.info(f"🕒 Local midnight: {local_midnight.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+            logging.info(f"🕒 Local midnight for {since}: {local_midnight.strftime('%Y-%m-%d %H:%M:%S %Z')}")
             logging.info(f"🌐 UTC timestamp used: {timestamp} ({utc_midnight.strftime('%Y-%m-%d %H:%M:%S %Z')})")
 
             query_parts.append(f"after:{timestamp}")
@@ -82,6 +81,7 @@ class GmailService:
 
         # Parse email metadata
         email_data = []
+        logging.info(f"📬 Parsing {len(messages)} messages...")
         for msg in messages:
             try:
                 msg_data = self.service.users().messages().get(
