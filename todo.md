@@ -1,115 +1,113 @@
-📬 Synthia Gmail Classifier – Project Todo List
-✅ Completed
-🔄 Email Classification & Training
-MultinomialNB - Pre-classification
+# 📬 Synthia Gmail Classifier – Project Todo List
 
-Human-in-the-Loop Training
+## ✅ Completed
 
-Manual classification UI + override flag
+### 🔄 Email Classification & Training
 
-Save trained local model to disk (joblib)
+* MultinomialNB - Pre-classification
+* Human-in-the-Loop Training
 
-Store manual classifications with timestamp and override flag
+  * Manual classification UI + override flag
+* Save trained local model to disk (joblib)
+* Store manual classifications with timestamp and override flag
+* Use `predict_proba()` for confidence levels
 
-Use predict_proba() for confidence levels
+### 🧠 Sender Reputation System
 
-🧠 Sender Reputation System
-Maintain classification history per sender
+* Maintain classification history per sender
+* Use weighted scoring: `Important` adds trust, `Spam` subtracts
+* Spamhaus Integration
 
-Use weighted scoring: Important adds trust, Spam subtracts
+  * Lookup + auto-classify as `Suspected Spam`
+* Manual Override
 
-Spamhaus Integration
+  * Enforced + stored in DB
 
-Lookup + auto-classify as Suspected Spam
+### 🧰 Maintenance & Cleanup
 
-Manual Override
+* Clear Classification State
 
-Enforced + stored in DB
+  * Button to delete all classification data
+* Database Vacuuming
+* Integrity Checks on startup
 
-🧰 Maintenance & Cleanup
-Clear Classification State
+### 📊 UI Enhancements
 
-Button to delete all classification data
+* Dashboard Indicators
 
-Database Vacuuming
+  * Show total + unclassified count
+* In-Place Editing
 
-Integrity Checks on startup
+  * Inline category selector in email table
+* Filter by sender/category
 
-📊 UI Enhancements
-Dashboard Indicators
+### ⚙️ Advanced Debug & Tools
 
-Show total + unclassified count
+* Manual Execution Controls
 
-In-Place Editing
+  * Step-by-step tools for fetching, classifying, reputation updating
 
-Inline category selector in email table
+---
 
-Filter by sender/category
+## 🔧 In Progress
 
-⚙️ Advanced Debug & Tools
-Manual Execution Controls
+### 🔄 Email Classification & Training
 
-Step-by-step tools for fetching, classifying, reputation updating
+* Hybrid Classification Pipeline
 
-🔧 In Progress
-🔄 Email Classification & Training
-Hybrid Classification Pipeline
+  * Use local first, send uncertain to OpenAI (pending confidence logic)
+* Model Management
 
-Use local first, send uncertain to OpenAI (pending confidence logic)
+  * Training + evaluation complete; needs versioning/rollback
+* Confidence Scoring
 
-Model Management
+  * Logging implemented, needs UI surfacing
+* Active Learning Loop
 
-Training + evaluation complete; needs versioning/rollback
+  * Not yet exposing low-confidence samples for review
 
-Confidence Scoring
+### 🧠 Sender Reputation System
 
-Logging implemented, needs UI surfacing
+* Reputation Decay Logic
 
-Active Learning Loop
+  * Age-based scoring decay not yet implemented
+* Feedback Loop into Classifier
 
-Not yet exposing low-confidence samples for review
+  * Sender score as input feature is planned
 
-🧠 Sender Reputation System
-Reputation Decay Logic
+### 🧰 Maintenance & Cleanup
 
-Age-based scoring decay not yet implemented
+* Auto-Prune Aged Emails
 
-Feedback Loop into Classifier
+  * Scheduled deletion not yet added
+* Backup & Restore
 
-Sender score as input feature is planned
+  * Export/restore via endpoint or UI still needed
 
-🧰 Maintenance & Cleanup
-Auto-Prune Aged Emails
+### 📊 UI Enhancements
 
-Scheduled deletion not yet added
+* Category Legend
 
-Backup & Restore
+  * Not shown yet in Gmail tab
+* Color badges/icons for categories
 
-Export/restore via endpoint or UI still needed
+  * Used in reputation tab; partial in email table
+* Highlight low-confidence predictions
 
-📊 UI Enhancements
-Category Legend
+  * To-do: Visual cues in UI
 
-Not shown yet in Gmail tab
+### ⚙️ Advanced Debug & Tools
 
-Color badges/icons for categories
+* Batch Execution Log
 
-Used in reputation tab; partial in email table
+  * Logging in backend; no UI history or persistence yet
 
-Highlight low-confidence predictions
+---
 
-To-do: Visual cues in UI
+## 📝 Planned / Future
 
-⚙️ Advanced Debug & Tools
-Batch Execution Log
+### 🔄 Email Classification & Training
 
-Logging in backend; no UI history or persistence yet
-
-📝 Planned / Future
-🔄 Email Classification & Training
-Learn user-defined tagging patterns
-
-Make labels customizable in UI
-
-Per-User Profile Adaptation
-
+* Learn user-defined tagging patterns
+* Make labels customizable in UI
+* Per-User Profile Adaptation
