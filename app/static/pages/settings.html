@@ -6,12 +6,12 @@
   Watchdog Status:
   <span id="watchdog-status" class="status-circle"></span>
   <span id="watchdog-label" class="status-label">Checking...</span>
-  <p>
-    📊 Email Stats:
-    <span>Total: <strong id="email-total">–</strong></span>,
-    <span>Uncategorized: <strong id="email-uncategorized">–</strong></span>
-  </p>
-  </p>
+</p>
+<p>
+  📊 Email Stats:
+  <span>Total: <strong id="email-total">–</strong></span>,
+  <span>Uncategorized: <strong id="email-uncategorized">–</strong></span>
+</p>
 
 <hr />
 
@@ -22,7 +22,6 @@
   <button onclick="clearSqlTables()">🧹 Clear Email + Sender Tables</button>
   <span id="clear-status" style="margin-left: 1rem;"></span>
 </p>
-
 <p>
   <!-- Clear ALL tables -->
   <button onclick="clearAllTables()">🧨 Clear ALL Tables (Hard Reset)</button>
@@ -31,6 +30,7 @@
 
 <hr />
 
+<!-- Debug section -->
 <h3>🛠️ Debug</h3>
 <p>
   <button onclick="debugFetchBack14()">📬 Fetch emails (14 days back)</button><br /><br />
@@ -38,4 +38,14 @@
   <button onclick="debugCopyEmailTable()">📄 Copy email table</button><br /><br />
   <button onclick="debugRestoreEmailTable()">♻️ Restore email table</button><br />
   <span id="debug-status" style="margin-top: 1rem; display: block;"></span>
+</p>
+
+<hr />
+
+<!-- Training section -->
+<h3>🧠 Train Local Classifier</h3>
+<p>
+  <button onclick="trainOnManual()">Train from Manual Labels ✍️</button>
+  <button onclick="trainOnOpenAI()">Train from OpenAI Labels 🤖</button>
+  <div id="train-status" style="margin-top: 0.5rem;"></div>
 </p>

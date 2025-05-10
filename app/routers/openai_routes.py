@@ -1,10 +1,13 @@
-from fastapi import APIRouter, Request
-from fastapi.responses import JSONResponse
+# Standard library imports
 from datetime import datetime, timedelta
 import os
+import time
+
+# Third-party imports
 import requests
 import openai
-import time
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse
 
 # Set OpenAI API keys from environment variables
 openai.api_key = os.getenv("OPENAI_API_KEY")

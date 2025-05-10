@@ -1,28 +1,28 @@
-import openai
+# Standard library imports
 import os
 import logging
 import time
 import json
 import sqlite3
-from utils.database import get_db_path
-import dns.resolver
 
-# Set OpenAI API key
+# Third-party imports
+import openai
+import dns.resolver
+from joblib import load
+from collections import Counter
+
+# Application-specific imports
+from utils.database import get_db_path
+from utils.trainer import combine_features
+
+# Constants
 openai.api_key = os.getenv("OPENAI_API_KEY")
 db_path = get_db_path()
+MODEL_PATH = "/data/local_classifier.joblib"
 
 def classify_email_batch():
     """
     Classifies a batch of unclassified emails using OpenAI's assistant and updates their categories in the database.
-
-    This function:
-    - Fetches up to 20 unclassified emails from the database.
-    - Filters emails using Spamhaus to flag potential spam.
-    - Sends the remaining emails to OpenAI for classification.
-    - Updates the database with the classification results.
-
-    Returns:
-        list: A list of classified emails with their updated categories.
     """
     try:
         assistant_id = "asst_HCLbiRcnBGBuK40Ax5jxkRcB"
@@ -73,12 +73,21 @@ def classify_email_batch():
         thread = openai.beta.threads.create()
 
         system_prompt = (
-            "Please classify each email below into one of the following categories:\n\n"
-            "• Important – Emails that contain urgent, personal, financial, or security-related information.\n"
-            "• Data – Emails that include appointments, tasks, reminders, receipts, or other structured actionable content.\n"
-            "• Regular – General correspondence, newsletters, updates, or messages that do not require action.\n"
-            "• Suspected Spam – Unwanted promotional or suspicious content.\n"
-            "The output should be a raw JSON array of objects with 'id' and 'category'."
+            "You are an email classification assistant. Classify each email below into exactly one of the following categories:\n\n"
+            "• Important – High-priority or time-sensitive email\n"
+            "• Data – Structured content or logs (e.g. appointments, reminders, receipts)\n"
+            "• Regular – Everyday correspondence not requiring urgent attention\n"
+            "• Work – Job-related or professional messages\n"
+            "• Personal – From friends or family\n"
+            "• Social – Social networks or events\n"
+            "• Newsletters – Recurring subscription content\n"
+            "• Notifications – Automated alerts from apps/services\n"
+            "• Receipts – Purchase confirmations or billing info\n"
+            "• System Updates – Notifications from platforms or operating systems\n"
+            "• Flagged for Review – Ambiguous or requires human review\n"
+            "• Suspected Spam – Possibly unwanted or unsolicited\n"
+            "Only reply with a raw JSON array of objects using this format:\n"
+            "[{\"id\": \"<email_id>\", \"category\": \"<chosen_category>\"}, ...]"
         )
 
         formatted_emails = "\n\n".join(
@@ -114,23 +123,33 @@ def classify_email_batch():
 
         parsed = json.loads(reply)
 
-        VALID_CATEGORIES = {"Important", "Data", "Regular", "Suspected Spam", "Uncategorized"}
+        VALID_CATEGORIES = {
+            "Important", "Data", "Regular", "Work", "Personal",
+            "Social", "Newsletters", "Notifications", "Receipts",
+            "System Updates", "Flagged for Review", "Suspected Spam",
+            "Confirmed Spam", "Phishing", "Blacklisted"
+        }
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         for item in parsed:
             raw_category = item.get("category", "").strip().title()
             category = raw_category if raw_category in VALID_CATEGORIES else "Uncategorized"
-            cursor.execute("UPDATE emails SET category = ? WHERE id = ?", (category, item["id"]))
+            cursor.execute(
+                "UPDATE emails SET category = ?, predicted_by = ? WHERE id = ?",
+                (category, "openai", item["id"])
+            )
         conn.commit()
         conn.close()
+        summary = Counter(item.get("category", "Uncategorized") for item in parsed)
+        summary_str = ", ".join(f"{label}: {count}" for label, count in summary.items())
         logging.info(f"✅ Classified {len(parsed)} emails.")
+        logging.info(f"📊 Classification summary: {summary_str}")
         return parsed
 
     except Exception as e:
         logging.error(f"Error during email classification: {e}")
         return None
-
 
 def check_sender_spamhaus(email):
     """
@@ -155,3 +174,26 @@ def check_sender_spamhaus(email):
     except Exception as e:
         logging.warning(f"Spamhaus lookup failed for {domain}: {e}")
         return False  # On error, treat as not spammy
+
+def predict_with_local_model(sender, sender_email, subject):
+    """
+    Predicts the category of an email using a local machine learning model.
+
+    Args:
+        sender (str): The sender's name.
+        sender_email (str): The sender's email address.
+        subject (str): The email's subject.
+
+    Returns:
+        tuple: Predicted label and confidence percentage, or (None, None) if the model is unavailable.
+    """
+    if not os.path.exists(MODEL_PATH):
+        return None, None
+
+    model = load(MODEL_PATH)
+    input_text = combine_features(sender, sender_email, subject)
+    predicted_label = model.predict([input_text])[0]
+    predicted_proba = model.predict_proba([input_text])[0]
+    confidence = max(predicted_proba)
+
+    return predicted_label, round(confidence * 100)

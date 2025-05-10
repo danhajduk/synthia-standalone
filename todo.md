@@ -1,151 +1,115 @@
-# 📬 Synthia Gmail Classifier – Project Todo List
+📬 Synthia Gmail Classifier – Project Todo List
+✅ Completed
+🔄 Email Classification & Training
+MultinomialNB - Pre-classification
 
-## ✅ Completed
+Human-in-the-Loop Training
 
-*
+Manual classification UI + override flag
 
----
+Save trained local model to disk (joblib)
 
-## 🔧 In Progress / Planned
+Store manual classifications with timestamp and override flag
 
-### 🔄 Email Classification & Training
+Use predict_proba() for confidence levels
 
-* MultinomialNB - Pre-classification
+🧠 Sender Reputation System
+Maintain classification history per sender
 
-* 🧑‍🏫 Human-in-the-Loop Training
+Use weighted scoring: Important adds trust, Spam subtracts
 
-  * Allow manual classification of emails to serve as ground truth
-  * Store manual classifications with timestamp and override flag
-  * Feed labeled emails into model training pipeline
+Spamhaus Integration
 
-* 🧩 Model Management
+Lookup + auto-classify as Suspected Spam
 
-  * Save trained local model to disk (joblib or pickle)
-  * Periodically retrain model with new labeled data
-  * Implement model versioning and rollback mechanism
+Manual Override
 
-* 🤖 Hybrid Classification Pipeline
+Enforced + stored in DB
 
-  * Use local model for initial classification
-  * Send only uncertain or flagged emails to OpenAI assistant
-  * Threshold for "uncertain" based on confidence score
+🧰 Maintenance & Cleanup
+Clear Classification State
 
-* ⚠️ Confidence Scoring
+Button to delete all classification data
 
-  * Use `predict_proba()` for confidence levels
-  * Log and surface low-confidence predictions for review
+Database Vacuuming
 
-* 🏷️ Custom Labels & Categories
+Integrity Checks on startup
 
-  * Expand beyond basic labels (Important, Spam, etc.)
-  * Learn user-defined tagging patterns
-  * Make labels customizable in UI
+📊 UI Enhancements
+Dashboard Indicators
 
-* 📈 Active Learning Loop
+Show total + unclassified count
 
-  * Periodically present uncertain classifications to the user for validation.
-  * Prioritize samples near the decision boundary to improve model efficiently.
+In-Place Editing
 
-* 🎯 Per-User Profile Adaptation
+Inline category selector in email table
 
-  * Track classification patterns by individual users (or sessions).
-  * Adjust model behavior dynamically for user-specific preferences.
+Filter by sender/category
 
-### 🧠 Sender Reputation System
+⚙️ Advanced Debug & Tools
+Manual Execution Controls
 
-* 📊 Dynamic Reputation Scoring
+Step-by-step tools for fetching, classifying, reputation updating
 
-  * Maintain classification history per sender
-  * Use weighted scoring: `Important` adds trust, `Spam` subtracts
-  * Apply decay over time to reduce weight of older classifications
+🔧 In Progress
+🔄 Email Classification & Training
+Hybrid Classification Pipeline
 
-* 🧼 Spamhaus Integration
+Use local first, send uncertain to OpenAI (pending confidence logic)
 
-  * Check senders against the DBL (Domain Block List)
-  * Automatically mark listed domains as `Suspected Spam`
-  * Bypass AI classification for listed senders
+Model Management
 
-* ✋ Manual Override
+Training + evaluation complete; needs versioning/rollback
 
-  * Allow user to force classification of a sender (e.g. always trusted)
-  * Store override flag and surface in UI
-  * Prevent AI or reputation score from altering manual override
+Confidence Scoring
 
-* 📉 Reputation Decay Logic
+Logging implemented, needs UI surfacing
 
-  * Score slowly returns to neutral unless reinforced by consistent classifications
-  * Configurable half-life for classification impact
+Active Learning Loop
 
-* 🔄 Feedback Loop into Classifier
+Not yet exposing low-confidence samples for review
 
-  * Include sender reputation score as a feature in ML model
-  * Improve model contextual understanding of sender trust
+🧠 Sender Reputation System
+Reputation Decay Logic
 
-### 🧰 Maintenance & Cleanup
+Age-based scoring decay not yet implemented
 
-* 🗑️ Auto-Prune Aged Emails
+Feedback Loop into Classifier
 
-  * Automatically delete emails older than 90 days
-  * Schedule periodic cleanup on startup or via cron-like job
+Sender score as input feature is planned
 
-* 🧹 Clear Classification State
+🧰 Maintenance & Cleanup
+Auto-Prune Aged Emails
 
-  * Button to delete all classification data (emails, labels, reputations)
-  * Useful for hard reset or retraining from scratch
+Scheduled deletion not yet added
 
-* 🧾 Backup & Restore
+Backup & Restore
 
-  * Allow export of database (emails + reputation) to a file
-  * Allow restoring from a backup
-  * Optionally automate periodic backups
+Export/restore via endpoint or UI still needed
 
-* 🧼 Database Vacuuming
+📊 UI Enhancements
+Category Legend
 
-  * Run SQLite `VACUUM` command periodically or manually to reclaim space
+Not shown yet in Gmail tab
 
-* 🧪 Integrity Checks
+Color badges/icons for categories
 
-  * Verify DB schema integrity on startup
-  * Auto-migrate if schema version changes
+Used in reputation tab; partial in email table
 
-### 📊 UI Enhancements
+Highlight low-confidence predictions
 
-* 📋 Dashboard Indicators
+To-do: Visual cues in UI
 
-  * Show total email count and number of unclassified emails
-  * Add warning badge for backlog (e.g. > 100 unclassified)
+⚙️ Advanced Debug & Tools
+Batch Execution Log
 
-* 🧠 Category Legend
+Logging in backend; no UI history or persistence yet
 
-  * Add UI legend to explain each classification category
-  * Provide hover tooltips or expandable help modal
+📝 Planned / Future
+🔄 Email Classification & Training
+Learn user-defined tagging patterns
 
-* 🎨 Improved Email Table
+Make labels customizable in UI
 
-  * Use icons and color badges for categories
-  * Highlight low-confidence predictions visually
-  * Allow sorting/filtering by sender, category, or confidence
+Per-User Profile Adaptation
 
-* 📝 In-Place Editing
-
-  * Allow user to change category inline in table
-
-### ⚙️ Advanced Debug & Tools
-
-* 🧪 Manual Execution Controls
-
-  * ☑️ Step 1: Fetch emails from last 2 days (on-demand)
-  * ☑️ Step 2: Run local pre-classification
-  * ☑️ Step 3: Run OpenAI remote classification
-  * ☑️ Step 4: Update sender reputation
-  * ☑️ Step 5: Save final labels
-  * Add a toggle to run full pipeline or step-by-step
-
-* 📜 Batch Execution Log
-
-  * Store a log of batch operations (timestamp, step, result)
-  * Show recent batch history in UI
-
----
-
-Let me know which one you'd like to work on next!

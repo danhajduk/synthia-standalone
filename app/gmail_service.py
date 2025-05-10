@@ -102,11 +102,16 @@ class GmailService:
 
                 logging.debug(f"✅ Parsed email: {sender_name} <{sender_email}> | {subject}")
 
+                # Get timestamp in ISO format
+                timestamp = int(msg_data.get("internalDate", 0)) / 1000
+                received_at = datetime.utcfromtimestamp(timestamp).isoformat()
+
                 email_data.append({
                     "id": msg['id'],
                     "sender": sender_name,
                     "email": sender_email,
-                    "subject": subject
+                    "subject": subject,
+                    "received_at": received_at
                 })
 
             except Exception as e:

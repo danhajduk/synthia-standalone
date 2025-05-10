@@ -1,286 +1,409 @@
-# Import necessary modules and utilities
+# Standard library imports
+from datetime import datetime, time
+import sqlite3
+import logging
+import json
+
+# Third-party imports
+import pytz
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-from datetime import datetime, time
-import sqlite3
-import socket
-import logging
-import pytz
+from datetime import datetime, timedelta
 
-# Import custom utilities
+# Application-specific imports
 from gmail_service import GmailService
 from utils.database import get_db_path
 from utils.classifier import classify_email_batch
-from datetime import datetime, timedelta
+from utils.trainer import train_local_classifier
 
 # Initialize router and logging
 router = APIRouter()
 db_path = get_db_path()
 logging.basicConfig(level=logging.INFO)
 
-# Define request model for category updates
+# Models
 class CategoryUpdate(BaseModel):
     id: str
     category: str
 
+# Routes
+@router.get("/fetch")
+def fetch_emails_since_midnight():
+    """
+    Fetch unread emails since midnight and store them in the database.
+    """
+    try:
+        # Calculate midnight in local timezone
+        local_tz = pytz.timezone("America/Los_Angeles")
+        now_local = datetime.now(local_tz)
+        local_midnight = datetime.combine(now_local.date(), time.min)
+        query_date = local_midnight.strftime("%Y-%m-%d")
 
-@router.get("/check_spamhaus")
-def check_spamhaus():
+        # Fetch emails using GmailService
+        gmail = GmailService(token_path="/data/token.json")
+        emails = gmail.fetch_emails(since=query_date, unread_only=True)
+        logging.info(f"📥 Fetched {len(emails)} emails")
+
+        # Insert emails into the database
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        inserted = 0
+        for email in emails:
+            cursor.execute("""
+                INSERT OR IGNORE INTO emails (
+                    id, sender, sender_email, subject, body,
+                    received_at, category, predicted_by,
+                    confidence, manual_override, override_timestamp, model_version
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                email.get("id"),
+                email.get("sender"),
+                email.get("email"),
+                email.get("subject"),
+                email.get("body", ""),
+                email.get("received_at"),
+                email.get("category", "Uncategorized"),
+                email.get("predicted_by", "none"),
+                email.get("confidence"),
+                email.get("manual_override", 0),
+                email.get("override_timestamp"),
+                email.get("model_version")
+            ))
+            inserted += cursor.rowcount
+
+        conn.commit()
+        conn.close()
+
+        return JSONResponse({"fetched": len(emails), "inserted": inserted})
+    except Exception as e:
+        logging.error(f"❌ Error fetching emails: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@router.get("/list")
+def list_emails():
+    """
+    Retrieve a list of stored emails from the database.
+    """
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute("SELECT sender_email FROM emails ORDER BY rowid DESC LIMIT 20")
+        cursor.execute("""
+            SELECT id, sender, sender_email, subject, category, received_at, predicted_by, confidence
+            FROM emails
+            ORDER BY received_at DESC
+            LIMIT 100
+        """)
         rows = cursor.fetchall()
         conn.close()
 
-        def query_spamhaus(email):
-            try:
-                domain = email.split('@')[-1]
-                ip = socket.gethostbyname(domain)
-                reversed_ip = ".".join(reversed(ip.split('.')))
-                query = f"{reversed_ip}.zen.spamhaus.org"
-                socket.gethostbyname(query)
-                return True  # Listed
-            except socket.gaierror:
-                return False  # Not listed or invalid
-            except Exception as e:
-                logging.warning(f"⚠️ Lookup failed for {email}: {e}")
-                return None
+        emails = [
+            {
+                "id": row[0],
+                "sender": row[1],
+                "email": row[2],
+                "subject": row[3],
+                "category": row[4],
+                "received_at": row[5],
+                "predicted_by": row[6]
+            }
+            for row in rows
+        ]
 
-        for row in rows:
-            email = row[0]
-            if not email or "@" not in email:
-                continue
-            result = query_spamhaus(email)
-            logging.info(f"🔍 {email} → {'⚠️ Listed on Spamhaus' if result else '✅ Clean'}")
-
-        return JSONResponse({"status": "checked", "count": len(rows)})
-
+        return JSONResponse({"emails": emails})
     except Exception as e:
+        logging.error(f"❌ Error listing emails: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-
-# Endpoint to update email category
-@router.post("/categorize")
-def update_category(data: CategoryUpdate):
+@router.get("/labels")
+def list_labels():
+    """
+    Retrieve a list of available email labels from the database.
+    """
     try:
-        logging.info(f"🔧 Updating category: {data.id} → {data.category}")
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute("UPDATE emails SET category = ? WHERE id = ?", (data.category, data.id))
+        cursor.execute("SELECT label FROM labels ORDER BY label")
+        rows = cursor.fetchall()
+        conn.close()
+
+        return JSONResponse({"labels": [row[0] for row in rows]})
+    except Exception as e:
+        logging.error(f"❌ Error listing labels: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+@router.post("/categorize")
+def update_email_category(data: CategoryUpdate):
+    """
+    Update the category of a specific email and refresh sender reputation.
+    """
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # Get sender info
+        cursor.execute("SELECT sender_email, sender FROM emails WHERE id = ?", (data.id,))
+        row = cursor.fetchone()
+        if not row:
+            return JSONResponse(status_code=404, content={"error": "Email not found"})
+
+        sender_email, sender_name = row
+
+        # Update email classification
+        cursor.execute("""
+            UPDATE emails
+            SET category = ?, predicted_by = ?, manual_override = 1, override_timestamp = ?
+            WHERE id = ?
+        """, (
+            data.category,
+            "manual",
+            datetime.utcnow().isoformat(),
+            data.id
+        ))
+
         conn.commit()
         conn.close()
+
+        # ✅ Update sender reputation
+        from utils.database import update_sender_reputation
+        update_sender_reputation(sender_email, sender_name, data.category)
+
         return JSONResponse({"status": "updated"})
+
     except Exception as e:
         logging.error(f"❌ Failed to update category: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-# Endpoint to fetch and store Gmail emails
-@router.get("/fetch")
-def fetch_and_store_gmail():
-    try:
-        logging.info("📥 Starting Gmail fetch...")
-        gmail = GmailService(token_path="/data/token.json")
-        emails = gmail.fetch_emails(
-            since=datetime.now().strftime("%Y-%m-%d"),
-            unread_only=True
-        )
-        logging.info(f"✅ Retrieved {len(emails)} emails")
-
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-
-        for email in emails:
-            cursor.execute("""
-                INSERT OR IGNORE INTO emails (id, sender, sender_email, subject)
-                VALUES (?, ?, ?, ?)""",
-                (email["id"], email["sender"], email["email"], email["subject"])
-            )
-            logging.debug(f"Email received: {email['email']}")
-
-        conn.commit()
-        conn.close()
-        return JSONResponse({"fetched": len(emails)})
-    except Exception as e:
-        logging.error(f"❌ Error during Gmail fetch: {e}")
-        return JSONResponse(status_code=500, content={"error": str(e)})
-
-# Endpoint to debug recent email entries
-@router.get("/debug")
-def debug_email_entries():
-    try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, sender, subject FROM emails ORDER BY rowid DESC LIMIT 5")
-        rows = cursor.fetchall()
-        conn.close()
-
-        emails = [{"id": r[0], "sender": r[1], "subject": r[2]} for r in rows]
-        return JSONResponse({"recent_emails": emails})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
-
-# Endpoint to get unread emails since midnight
-@router.get("/unread")
-def get_unread_today():
-    try:
-        gmail = GmailService(token_path="/data/token.json")
-
-        # Convert local midnight to UTC timestamp
-        local_tz = pytz.timezone("America/Los_Angeles")
-        now_local = datetime.now(local_tz)
-        local_midnight = local_tz.localize(datetime.combine(now_local.date(), time.min))
-        utc_midnight = local_midnight.astimezone(pytz.utc)
-        timestamp = int(utc_midnight.timestamp())
-
-        logging.info(f"🕒 Checking unread count since: {utc_midnight.strftime('%Y-%m-%d %H:%M:%S UTC')} (timestamp={timestamp})")
-
-        unread_query = f"is:unread after:{timestamp}"
-        response = gmail.service.users().messages().list(userId="me", q=unread_query).execute()
-        unread_today = response.get("resultSizeEstimate", 0)
-
-        return JSONResponse({"unread_today": unread_today})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
-
-# Endpoint to list stored emails
-@router.get("/list")
-def list_stored_emails():
-    try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-
-        cursor.execute("SELECT id, sender, sender_email, subject, category FROM emails ORDER BY rowid DESC LIMIT 100")
-        rows = cursor.fetchall()
-        conn.close()
-
-        emails = [{
-            "id": r[0],
-            "sender": r[1],
-            "email": r[2],  # maps to sender_email in DB
-            "subject": r[3],
-            "category": r[4]
-        } for r in rows]
-
-        return JSONResponse(content={"emails": emails})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
-
-# Endpoint to clear all tables
-@router.post("/clear")
-@router.get("/clear")
-def clear_all_tables():
-    try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM emails")
-        cursor.execute("DELETE FROM sender_reputation")
-        conn.commit()
-        conn.close()
-        return JSONResponse({"status": "success", "message": "All tables cleared."})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
-
-# Endpoint to trigger email classification manually
-@router.post("/classify")
-def trigger_classification():
+@router.post("/ai_classify")
+def ai_classify_emails():
+    """
+    Use AI to classify unclassified emails and update their categories in the database.
+    """
     try:
         result = classify_email_batch()
-        return JSONResponse({"classified": len(result) if result else 0})
+        if result is None:
+            return JSONResponse(status_code=500, content={"error": "Classification failed"})
+
+        return JSONResponse({"classified": len(result), "details": result})
     except Exception as e:
+        logging.error(f"❌ Error during AI classification: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 
-@router.get("/stats")
-def get_email_stats():
-    try:
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
+@router.post("/train/manual")
+def train_from_manual():
+    success = train_local_classifier(source="manual")
+    return JSONResponse({"status": "ok" if success else "no_data", "source": "manual"})
 
-        cursor.execute("SELECT COUNT(*) FROM emails")
-        total = cursor.fetchone()[0]
-
-        cursor.execute("SELECT COUNT(*) FROM emails WHERE category IS NULL OR category = 'Uncategorized'")
-        uncategorized = cursor.fetchone()[0]
-
-        conn.close()
-        return JSONResponse({"total": total, "uncategorized": uncategorized})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
-
-#######################################3
-# Debug section 
-########################################
+@router.post("/train/openai")
+def train_from_openai():
+    success = train_local_classifier(source="openai")
+    return JSONResponse({"status": "ok" if success else "no_data", "source": "openai"})
 
 @router.get("/debug/fetch14")
-
-def debug_fetch_14_days():
+def fetch_last_14_days():
+    """
+    Fetch all emails from the last 14 days (excluding today) and insert them into the database.
+    """
     try:
-        logging.info("📥 Debug: Fetching emails from last 14 days")
+        logging.info("📥 Debug: Fetching all emails from the last 14 days (excluding today)")
         gmail = GmailService(token_path="/data/token.json")
 
-        # Calculate 14 days ago as date string
-        target_date = datetime.now() - timedelta(days=14)
-        since_str = target_date.strftime("%Y-%m-%d")
+        end_date = datetime.utcnow().date()
+        start_date = end_date - timedelta(days=90)
+        query_date = start_date.strftime("%Y-%m-%d")
 
-        logging.info(f"📅 14 days ago (date string): {since_str}")
-
-        emails = gmail.fetch_emails(since=since_str, unread_only=False)
+        emails = gmail.fetch_emails(since=query_date, unread_only=False)
+        logging.info(f"📬 Retrieved {len(emails)} total emails")
 
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
+        inserted = 0
+
         for email in emails:
+            received_str = email.get("received_at")
+            if not received_str:
+                continue
+
+            received_date = datetime.fromisoformat(received_str).date()
+            if received_date >= end_date:
+                # Skip emails from today
+                continue
+            required_fields = ["id", "sender", "email", "subject", "received_at"]
+            missing_fields = [field for field in required_fields if not email.get(field)]
+
+            if missing_fields:
+                logging.warning(f"⏭️ Skipping email with missing fields: {missing_fields}, ID: {email.get('id')}")
+                continue
+
             cursor.execute("""
-                INSERT OR REPLACE INTO emails (id, sender, sender_email, subject)
-                VALUES (?, ?, ?, ?)""",
-                (email["id"], email["sender"], email["email"], email["subject"]))
+                INSERT OR IGNORE INTO emails (
+                    id, sender, sender_email, subject, body,
+                    received_at, category, predicted_by,
+                    confidence, manual_override, override_timestamp, model_version
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                email.get("id"),
+                email.get("sender"),
+                email.get("email"),
+                email.get("subject"),
+                email.get("body", ""),
+                email.get("received_at"),
+                email.get("category", "Uncategorized"),
+                email.get("predicted_by"),
+                email.get("confidence"),
+                email.get("manual_override", 0),
+                email.get("override_timestamp"),
+                email.get("model_version")
+            ))
+            inserted += cursor.rowcount
+
         conn.commit()
         conn.close()
 
-        return JSONResponse({"fetched": len(emails)})
+        return JSONResponse({"fetched": len(emails), "inserted": inserted})
     except Exception as e:
         logging.error(f"❌ Fetch 14 days error: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+import time
+
 @router.get("/debug/classify-all")
-def debug_classify_all():
-    from utils.classifier import classify_email_batch
+def classify_all_in_batches():
+    """
+    Classifies all unclassified emails using OpenAI in batches of 20.
+    Logs estimated time remaining after each batch.
+    """
     total_classified = 0
-    counter = 0
-    while True:
-        # Classify emails in batches
-        counter += 1
-        logging.info(f"🔄 Classifying batch {counter} : ({counter * 20})")
-        result = classify_email_batch()
-        if not result or len(result) == 0:
-            break
-        total_classified += len(result)
+    batch_count = 0
+    batch_times = []
 
-    return JSONResponse({"total": total_classified})
-
-@router.post("/debug/backup")
-def debug_copy_email_table():
     try:
+        while True:
+            # Start timing the batch
+            start_time = time.time()
+
+            result = classify_email_batch()
+            if not result:
+                break
+
+            # End timing
+            elapsed = time.time() - start_time
+            batch_times.append(elapsed)
+
+            total_classified += len(result)
+            batch_count += 1
+
+            # Estimate remaining
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT COUNT(*) FROM emails
+                WHERE category IS NULL OR category = 'Uncategorized'
+            """)
+            remaining = cursor.fetchone()[0]
+            conn.close()
+
+            avg_batch_time = sum(batch_times) / len(batch_times)
+            batches_left = (remaining // 20) + (1 if remaining % 20 else 0)
+            eta = int(avg_batch_time * batches_left)
+
+            mins, secs = divmod(eta, 60)
+            logging.info(f"🔄 Batch {batch_count} classified {len(result)} emails — 📨 {remaining} remaining unclassified — ⏳ ETA: {mins}m {secs}s")
+
+        # Final check
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute("DROP TABLE IF EXISTS emails_backup")
-        cursor.execute("CREATE TABLE emails_backup AS SELECT * FROM emails")
-        conn.commit()
+        cursor.execute("""
+            SELECT COUNT(*) FROM emails
+            WHERE category IS NULL OR category = 'Uncategorized'
+        """)
+        final_remaining = cursor.fetchone()[0]
         conn.close()
-        return JSONResponse({"status": "success", "message": "✅ Email table copied to 'emails_backup'"})
+
+        logging.info(f"✅ All batches complete — 📨 Final unclassified emails: {final_remaining}")
+
+        return JSONResponse({
+            "status": "completed",
+            "batches": batch_count,
+            "total_classified": total_classified,
+            "remaining_unclassified": final_remaining
+        })
+
     except Exception as e:
+        logging.error(f"❌ Error during batch classification: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-@router.post("/debug/restore")
-def debug_restore_email_table():
+@router.get("/reputation")
+def list_sender_reputation():
+    """
+    List sender reputation stats.
+    """
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
-        cursor.execute("DROP TABLE IF EXISTS emails")
-        cursor.execute("CREATE TABLE emails AS SELECT * FROM emails_backup")
-        conn.commit()
+        cursor.execute("""
+            SELECT sender_email, sender_name, reputation_score, reputation_state, classification_counts, last_updated
+            FROM sender_reputation
+            ORDER BY reputation_score DESC
+            LIMIT 100
+        """)
+        rows = cursor.fetchall()
         conn.close()
-        return JSONResponse({"status": "success", "message": "✅ Email table restored from 'emails_backup'"})
+
+        results = []
+        for row in rows:
+            results.append({
+                "email": row[0],
+                "name": row[1],
+                "score": row[2],
+                "state": row[3],
+                "counts": json.loads(row[4]),
+                "updated": row[5]
+            })
+
+        return JSONResponse({"senders": results})
     except Exception as e:
+        logging.error(f"❌ Reputation fetch failed: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
+    
+@router.post("/reputation/recalculate")
+def recalculate_all_sender_reputations():
+    """
+    Recalculate reputation data for all senders based on existing email classifications.
+    """
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        cursor.execute("""
+            SELECT sender_email, sender, category
+            FROM emails
+            WHERE sender_email IS NOT NULL AND category IS NOT NULL
+        """)
+        rows = cursor.fetchall()
+        conn.close()
+
+        from collections import defaultdict, Counter
+        sender_data = defaultdict(lambda: {"name": "", "counts": Counter()})
+
+        for email, name, category in rows:
+            sender_data[email]["name"] = name
+            sender_data[email]["counts"][category] += 1
+
+        from utils.database import update_sender_reputation
+
+        for email, data in sender_data.items():
+            for label, count in data["counts"].items():
+                # Simulate repeated updates
+                for _ in range(count):
+                    update_sender_reputation(email, data["name"], label)
+
+        return JSONResponse({
+            "status": "recalculated",
+            "senders_updated": len(sender_data)
+        })
+
+    except Exception as e:
+        logging.error(f"❌ Reputation recalculation failed: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})

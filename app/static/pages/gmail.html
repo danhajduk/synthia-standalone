@@ -1,21 +1,36 @@
 <!-- Gmail integration header -->
 <h2>📬 Gmail Integration</h2>
 
-<!-- Display unread emails count -->
+<!-- Unread emails today -->
 <div style="font-size: 1.5rem; margin-bottom: 1rem;">
   <strong>Unread emails today:</strong> <span id="gmail-unread-today">–</span>
 </div>
 
-<!-- Button to fetch emails -->
-<button onclick="fetchAndStoreEmails()">📥 Fetch Emails</button>
-<div id="gmail-fetch-result" style="margin-top: 1rem;"></div>
+<!-- Control buttons -->
+<div style="margin-bottom: 1rem;">
+  <button onclick="fetchAndStoreEmails()">📥 Fetch Emails</button>
+  <button onclick="aiClassifyEmails()">🧠 AI Classify</button>
+</div>
+<div id="gmail-fetch-result" style="margin-bottom: 1rem;"></div>
 
+<!-- Spamhaus check -->
 <h4>🔎 Check Sender Domains on Spamhaus</h4>
 <button onclick="checkSpamhaus()">Check Last 20</button>
-<div id="spamhaus-check-result" style="margin-top: 1rem;"></div>
+<div id="spamhaus-check-result" style="margin-top: 0.5rem; margin-bottom: 1rem;"></div>
 
 <!-- Stored emails table -->
-<h3 style="margin-top: 2rem;">📑 Stored Emails:</h3>
+<h3>📑 Stored Emails:</h3>
+<div style="margin-bottom: 1rem;">
+  <label for="filter-sender">Sender:</label>
+  <select id="filter-sender" onchange="loadStoredEmails()">
+    <option value="">All</option>
+  </select>
+
+  <label for="filter-category" style="margin-left: 1em;">Category:</label>
+  <select id="filter-category" onchange="loadStoredEmails()">
+    <option value="">All</option>
+  </select>
+</div>
 <table id="gmail-email-table" border="1" cellspacing="0" cellpadding="6" style="width: 100%; text-align: left;">
   <thead>
     <tr>
@@ -23,10 +38,10 @@
       <th>Email</th>
       <th>Subject</th>
       <th>Category</th>
+      <th>Classified By</th>
     </tr>
   </thead>
-  <tbody id="gmail-email-body"></tbody>
-    <!-- Placeholder for email data -->
+    <tbody id="gmail-email-body">
     <tr><td colspan="4">Loading...</td></tr>
   </tbody>
 </table>

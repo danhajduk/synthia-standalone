@@ -27,7 +27,9 @@ function loadSection(section) {
         loadStoredEmails();
       } else if (section === 'ai') {
         loadAiUsage();
-      }
+      } else if (section === 'reputation') {
+        loadReputation();
+      }      
     })
     .catch(error => {
       console.error(error);
@@ -127,43 +129,86 @@ function fetchAndStoreEmails() {
 /**
  * Loads the list of stored Gmail emails and displays them in a table.
  */
-function loadStoredEmails() {
+async function loadStoredEmails() {
   const base = window.location.pathname.replace(/\/$/, "");
   const body = document.getElementById("gmail-email-body");
-  body.innerHTML = `<tr><td colspan="2">Loading...</td></tr>`;
+  const filterSender = document.getElementById("filter-sender");
+  const filterCategory = document.getElementById("filter-category");
 
-  fetch(`${base}/api/gmail/list`)
-    .then(res => res.json())
-    .then(data => {
-      if (data.emails?.length) {
-        body.innerHTML = "";
-        data.emails.forEach(email => {
-          const row = document.createElement("tr");
-          row.innerHTML = `
-            <td>${email.sender}</td>
-            <td>${email.email}</td>
-            <td>${email.subject}</td>
-            <td>
-              <select onchange="updateEmailCategory('${email.id}', this.value)">
-                <option value="Uncategorized"${email.category === 'Uncategorized' ? ' selected' : ''}>❓ Uncategorized</option>
-                <option value="Important"${email.category === 'Important' ? ' selected' : ''}>📌 Important</option>
-                <option value="Data"${email.category === 'Data' ? ' selected' : ''}>📊 Data</option>
-                <option value="Regular"${email.category === 'Regular' ? ' selected' : ''}>📬 Regular Mail</option>
-                <option value="Spam"${email.category === 'Suspected Spam' ? ' selected' : ''}>🚫 Suspected Spam</option>
-              </select>
-            </td>
-          `;
-          body.appendChild(row);
-        });
-      } else {
-        body.innerHTML = `<tr><td colspan="2">No emails stored.</td></tr>`;
-      }
-    })
-    .catch(err => {
-      console.error("Load email list error:", err);
-      body.innerHTML = `<tr><td colspan="2">Failed to load email list.</td></tr>`;
+  body.innerHTML = `<tr><td colspan="5">Loading...</td></tr>`;
+
+  try {
+    const [emailsRes, labelsRes] = await Promise.all([
+      fetch(`${base}/api/gmail/list`).then(res => res.json()),
+      fetch(`${base}/api/gmail/labels`).then(res => res.json())
+    ]);
+
+    const emails = emailsRes.emails ?? [];
+    const labels = labelsRes.labels ?? [];
+
+    // Populate filter dropdowns if empty
+    if (filterSender.options.length <= 1) {
+      const uniqueSenders = [...new Set(emails.map(e => e.email))].sort();
+      uniqueSenders.forEach(sender => {
+        const opt = document.createElement("option");
+        opt.value = sender;
+        opt.textContent = sender;
+        filterSender.appendChild(opt);
+      });
+    }
+
+    if (filterCategory.options.length <= 1) {
+      labels.forEach(label => {
+        const opt = document.createElement("option");
+        opt.value = label;
+        opt.textContent = label;
+        filterCategory.appendChild(opt);
+      });
+    }
+
+    // Apply filters
+    const senderFilter = filterSender.value;
+    const categoryFilter = filterCategory.value;
+
+    const filtered = emails.filter(email => {
+      return (!senderFilter || email.email === senderFilter) &&
+             (!categoryFilter || email.category === categoryFilter);
     });
+
+    if (filtered.length === 0) {
+      body.innerHTML = `<tr><td colspan="5">No emails match your filters.</td></tr>`;
+      return;
+    }
+
+    body.innerHTML = "";
+    filtered.forEach(email => {
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${email.sender}</td>
+        <td>${email.email}</td>
+        <td>${email.subject}</td>
+        <td>
+          <select onchange="updateEmailCategory('${email.id}', this.value)">
+            ${labels.map(label =>
+              `<option value="${label}"${email.category === label ? " selected" : ""}>${label}</option>`
+            ).join("")}
+          </select>
+        </td>
+        <td>${email.predicted_by === "local" && email.confidence ? `⚙️ Local (${email.confidence.toFixed(0)}%)`
+              : email.predicted_by === "openai" ? "🤖 OpenAI"
+              : email.predicted_by === "manual" ? "✍️ Manual"
+              : "–"}
+        </td>
+      `;
+      body.appendChild(row);
+    });
+
+  } catch (err) {
+    console.error("Load email list error:", err);
+    body.innerHTML = `<tr><td colspan="5">Failed to load email list.</td></tr>`;
+  }
 }
+
 
 /**
  * Sends a chat message to the AI assistant and displays the response.
@@ -346,5 +391,125 @@ function debugRestoreEmailTable() {
     .catch(err => {
       console.error(err);
       status.textContent = "❌ Restore failed.";
+    });
+}
+
+function aiClassifyEmails() {
+  const base = window.location.pathname.replace(/\/$/, "");
+  const resultDiv = document.getElementById("gmail-fetch-result");
+  resultDiv.textContent = "🧠 Classifying with AI...";
+
+  fetch(`${base}/api/gmail/ai_classify`, { method: "POST" })
+    .then(res => res.json())
+    .then(data => {
+      if (data.classified !== undefined) {
+        resultDiv.textContent = `✅ AI classified ${data.classified} email(s).`;
+        loadStoredEmails();
+      } else {
+        resultDiv.textContent = `⚠️ AI Error: ${data.error}`;
+      }
+    })
+    .catch(err => {
+      console.error("AI classify error:", err);
+      resultDiv.textContent = "❌ AI classification failed.";
+    });
+}
+
+function trainOnManual() {
+  const base = window.location.pathname.replace(/\/$/, "");
+  const status = document.getElementById("train-status");
+  status.textContent = "🔁 Training on manual labels...";
+
+  fetch(`${base}/api/gmail/train/manual`, { method: "POST" })
+    .then(res => res.json())
+    .then(data => {
+      status.textContent = `✅ Training started on ${data.source} labels.`;
+    })
+    .catch(err => {
+      console.error(err);
+      status.textContent = "❌ Training failed.";
+    });
+}
+
+function trainOnOpenAI() {
+  const base = window.location.pathname.replace(/\/$/, "");
+  const status = document.getElementById("train-status");
+  status.textContent = "🔁 Training on OpenAI labels...";
+
+  fetch(`${base}/api/gmail/train/openai`, { method: "POST" })
+    .then(res => res.json())
+    .then(data => {
+      status.textContent = `✅ Training started on ${data.source} labels.`;
+    })
+    .catch(err => {
+      console.error(err);
+      status.textContent = "❌ Training failed.";
+    });
+}
+
+function loadReputation() {
+  const base = window.location.pathname.replace(/\/$/, "");
+  const body = document.getElementById("reputation-table-body");
+  body.innerHTML = `<tr><td colspan="6">Loading...</td></tr>`;
+
+  function reputationIcon(score) {
+    if (score >= 0.9) return "🌟";     // Excellent
+    if (score >= 0.7) return "✅";     // Good
+    if (score >= 0.4) return "⚠️";     // Moderate
+    if (score >= 0.1) return "🚫";     // Poor
+    return "❗";                       // Very bad / unknown
+  }
+
+  fetch(`${base}/api/gmail/reputation`)
+    .then(res => res.json())
+    .then(data => {
+      const senders = data.senders ?? [];
+      if (senders.length === 0) {
+        body.innerHTML = `<tr><td colspan="6">No data available.</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = "";
+      senders.forEach(sender => {
+        const icon = reputationIcon(sender.score ?? 0);
+        const counts = Object.entries(sender.counts || {})
+          .map(([label, count]) => `<span style="margin-right: 6px;">${label}: <strong>${count}</strong></span>`)
+          .join("");
+
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${sender.email}</td>
+          <td>${sender.name}</td>
+          <td>${icon} ${(sender.score ?? 0).toFixed(2)}</td>
+          <td>${sender.state}</td>
+          <td style="font-size: 0.9em;">${counts}</td>
+          <td><span style="background:#e0e0e0;padding:2px 6px;border-radius:4px;font-size:0.85em;">${new Date(sender.updated).toLocaleString()}</span></td>
+        `;
+        body.appendChild(row);
+      });
+    })
+    .catch(err => {
+      console.error("Sender reputation fetch error:", err);
+      body.innerHTML = `<tr><td colspan="6">Error loading reputation data.</td></tr>`;
+    });
+}
+function recalculateReputation() {
+  const base = window.location.pathname.replace(/\/$/, "");
+  const statusDiv = document.getElementById("reputation-recalc-status");
+  statusDiv.textContent = "⏳ Recalculating...";
+
+  fetch(`${base}/api/gmail/reputation/recalculate`, { method: "POST" })
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === "recalculated") {
+        statusDiv.textContent = `✅ Updated ${data.senders_updated} senders.`;
+        loadReputation();
+      } else {
+        statusDiv.textContent = `❌ ${data.error || "Update failed."}`;
+      }
+    })
+    .catch(err => {
+      console.error("Reputation update error:", err);
+      statusDiv.textContent = "❌ Request failed.";
     });
 }

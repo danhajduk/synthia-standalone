@@ -1,3 +1,4 @@
+# Standard library imports
 from pathlib import Path
 import sqlite3
 import json
@@ -6,113 +7,201 @@ from datetime import datetime
 # Path to the SQLite database
 DB_PATH = "/data/gmail.sqlite"
 
+# Fixed set of classification labels
+LABELS = [
+    ("Important", "High-priority or time-sensitive email"),
+    ("Data", "Structured content or logs"),
+    ("Regular", "Everyday correspondence"),
+    ("Work", "Job-related or professional"),
+    ("Personal", "From friends or family"),
+    ("Social", "Social networks or events"),
+    ("Newsletters", "Recurring content subscriptions"),
+    ("Notifications", "Automated alerts from services"),
+    ("Receipts", "Purchase confirmations or bills"),
+    ("System Updates", "Platform or system notifications"),
+    ("Uncategorized", "Not yet classified"),
+    ("Flagged for Review", "User needs to check this"),
+    ("Suspected Spam", "Likely spam, needs confirmation"),
+    ("Confirmed Spam", "Verified as spam"),
+    ("Phishing", "Dangerous or deceptive email"),
+    ("Blacklisted", "Domain found in Spamhaus DBL")
+]
+
+def get_db_path():
+    """
+    Returns the path to the SQLite database file.
+    """
+    return DB_PATH
+
 def initialize_database():
     """
-    Initializes the SQLite database by creating necessary tables if they do not already exist.
-
-    This function ensures the database is ready for use by:
-    - Creating the `emails` table to store email metadata.
-    - Creating the `sender_reputation` table to track sender reputation and classification data.
-
-    The function also ensures that the `/data` directory exists before attempting to create the database file.
+    Initializes the SQLite database and creates required tables and labels.
     """
-    # Ensure the data directory exists
     Path("/data").mkdir(exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    # Create the emails table if it doesn't already exist
+    # Enable foreign key constraints
+    cursor.execute("PRAGMA foreign_keys = ON;")
+
+    # Create system metadata table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS system (
+        key TEXT PRIMARY KEY,
+        value TEXT
+    )
+    """)
+
+    # Create labels table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS labels (
+        label TEXT PRIMARY KEY,
+        description TEXT,
+        icon TEXT DEFAULT NULL
+    )
+    """)
+
+    for label, description in LABELS:
+        cursor.execute("""
+            INSERT OR IGNORE INTO labels (label, description)
+            VALUES (?, ?)
+        """, (label, description))
+
+    # Create the emails table with expanded structure
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS emails (
-        id TEXT PRIMARY KEY,  -- Unique identifier for the email
-        sender TEXT,          -- Name of the sender
-        subject TEXT,         -- Subject of the email
-        sender_email TEXT,    -- Email address of the sender
-        category TEXT DEFAULT 'Uncategorized'  -- Category of the email
+        id TEXT PRIMARY KEY,
+        sender TEXT,
+        subject TEXT,
+        body TEXT,
+        sender_email TEXT,
+        received_at TIMESTAMP,
+        category TEXT DEFAULT 'Uncategorized',
+        predicted_by TEXT DEFAULT 'local',
+        confidence REAL DEFAULT NULL,
+        manual_override INTEGER DEFAULT 0,
+        override_timestamp TIMESTAMP DEFAULT NULL,
+        model_version TEXT DEFAULT NULL,
+        FOREIGN KEY(category) REFERENCES labels(label)
     )
     """)
 
-    # Create the sender_reputation table with enhanced structure
+    # Create sender reputation table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS sender_reputation (
-        sender_email TEXT PRIMARY KEY,          -- Email address of the sender
-        sender_name TEXT,                       -- Name of the sender
-        classification_counts TEXT DEFAULT '{}', -- JSON string of classification counts
-        reputation_score REAL DEFAULT 0.0,      -- Numeric reputation score
-        manual_override TEXT DEFAULT NULL,      -- Manual override for reputation
-        origin_sources TEXT DEFAULT '[]',       -- JSON string of origin sources
-        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP, -- Last updated timestamp
-        reputation_state TEXT DEFAULT 'unknown' -- Current reputation state
+        sender_email TEXT PRIMARY KEY,
+        sender_name TEXT,
+        classification_counts TEXT DEFAULT '{}',
+        reputation_score REAL DEFAULT 0.0,
+        manual_override TEXT DEFAULT NULL,
+        origin_sources TEXT DEFAULT '[]',
+        last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        reputation_state TEXT DEFAULT 'unknown'
     )
     """)
 
-    # Commit changes and close the connection
     conn.commit()
     conn.close()
 
-def get_db_path():
-    """
-    Returns the path to the SQLite database.
-
-    This function provides a centralized way to retrieve the database path, ensuring consistency
-    across the application.
-
-    Returns:
-        str: The path to the SQLite database file.
-    """
-    return DB_PATH
-
 def update_sender_reputation(sender_email, sender_name, classification):
     """
-    Updates the sender reputation table with classification counts and metadata.
-
-    This function performs the following:
-    - Checks if the sender already exists in the `sender_reputation` table.
-    - If the sender exists, it updates the classification counts and metadata (e.g., last updated timestamp).
-    - If the sender does not exist, it inserts a new row with the provided data.
-
-    Args:
-        sender_email (str): The email address of the sender.
-        sender_name (str): The name of the sender.
-        classification (str): The classification category to increment in the counts.
-
-    Raises:
-        Exception: If any error occurs during the database operation, it logs the error and raises it.
+    Updates or inserts sender reputation based on a classification.
+    Tracks category counts, score, and state.
     """
     try:
         conn = sqlite3.connect(get_db_path())
         cursor = conn.cursor()
 
-        # Fetch the current row for the sender if it exists
+        # Retrieve existing counts
         cursor.execute("SELECT classification_counts FROM sender_reputation WHERE sender_email = ?", (sender_email,))
         row = cursor.fetchone()
-
-        # Get the current timestamp
         now = datetime.utcnow().isoformat()
 
         if row:
-            # Parse existing classification counts
             counts = json.loads(row[0])
-            counts[classification] = counts.get(classification, 0) + 1  # Increment the count for the classification
+            counts[classification] = counts.get(classification, 0) + 1
+        else:
+            counts = {classification: 1}
 
-            # Update the existing row with new counts and metadata
+        score = calculate_reputation_score(counts)
+        state = determine_reputation_state(score)
+
+        if row:
             cursor.execute("""
                 UPDATE sender_reputation
-                SET classification_counts = ?, sender_name = ?, last_updated = ?
+                SET classification_counts = ?, sender_name = ?, last_updated = ?,
+                    reputation_score = ?, reputation_state = ?
                 WHERE sender_email = ?
-            """, (json.dumps(counts), sender_name, now, sender_email))
+            """, (
+                json.dumps(counts),
+                sender_name,
+                now,
+                score,
+                state,
+                sender_email
+            ))
         else:
-            # Initialize classification counts for a new sender
-            counts = {classification: 1}
             cursor.execute("""
-                INSERT INTO sender_reputation (sender_email, sender_name, classification_counts, last_updated)
-                VALUES (?, ?, ?, ?)
-            """, (sender_email, sender_name, json.dumps(counts), now))
+                INSERT INTO sender_reputation (
+                    sender_email, sender_name, classification_counts,
+                    last_updated, reputation_score, reputation_state
+                ) VALUES (?, ?, ?, ?, ?, ?)
+            """, (
+                sender_email,
+                sender_name,
+                json.dumps(counts),
+                now,
+                score,
+                state
+            ))
 
-        # Commit changes and close the connection
         conn.commit()
         conn.close()
 
     except Exception as e:
-        # Log any errors that occur during the update
         print(f"⚠️ Error updating sender reputation for {sender_email}: {e}")
+
+def calculate_reputation_score(counts: dict) -> float:
+    """
+    Computes a sender reputation score based on classification counts.
+    """
+    positive_labels = {"Important", "Work", "Personal", "Receipts"}
+    negative_labels = {"Phishing", "Confirmed Spam", "Suspected Spam", "Blacklisted"}
+    
+    total = sum(counts.values())
+    if total == 0:
+        return 0.0
+
+    positives = sum(counts.get(label, 0) for label in positive_labels)
+    negatives = sum(counts.get(label, 0) for label in negative_labels)
+
+    raw_score = (positives - negatives) / total
+    normalized = max(0.0, min(1.0, (raw_score + 1) / 2))
+    return round(normalized, 2)
+
+def determine_reputation_state(score: float) -> str:
+    """
+    Maps score to a human-readable reputation category.
+    """
+    if score >= 0.8:
+        return "trusted"
+    elif score >= 0.5:
+        return "neutral"
+    elif score >= 0.2:
+        return "flagged"
+    else:
+        return "dangerous"
+def ensure_system_table():
+    """
+    Ensures the 'system' table exists for storing key-value system metadata.
+    """
+    conn = sqlite3.connect(get_db_path())
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS system (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        )
+    """)
+    conn.commit()
+    conn.close()

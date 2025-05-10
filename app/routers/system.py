@@ -27,3 +27,22 @@ def clear_all_tables():
         return JSONResponse({"status": "success", "message": "All tables cleared."})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+@router.get("/model/metrics")
+def get_model_metrics():
+    try:
+        conn = sqlite3.connect(get_db_path())
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM system WHERE key = ?", ("local_model_evaluation",))
+        row = cursor.fetchone()
+        conn.close()
+
+        if not row:
+            return JSONResponse(status_code=404, content={"error": "No evaluation data found."})
+
+        metrics = json.loads(row[0])
+        return JSONResponse(content=metrics)
+
+    except Exception as e:
+        logging.error(f"❌ Error retrieving model metrics: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
