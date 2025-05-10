@@ -1,107 +1,112 @@
 # Synthia Standalone
 
-Synthia is a standalone application that integrates Gmail, OpenAI, and other utilities to provide a seamless experience for managing emails, interacting with AI, and performing system maintenance.
+Synthia Standalone is a self-hosted AI-powered assistant that integrates Gmail classification, sender reputation tracking, OpenAI analysis, and a friendly web UI. Designed for local deployments using Docker.
 
-## Features
+---
 
-- **Gmail Integration**: Fetch, store, and categorize emails. View unread emails and manage email data.
-- **AI Assistant**: Chat with an AI assistant powered by OpenAI and track usage statistics.
-- **System Maintenance**: Clear database tables and monitor system status.
-- **Web Interface**: A user-friendly interface for interacting with the application.
+## 🔧 Features
 
-## Project Structure
+### ✉️ Gmail Integration
 
-```
-/app
-  ├── routers/          # API route handlers
-  ├── static/           # Static files (HTML, CSS, JS)
-  ├── utils/            # Utility modules (e.g., database, classifiers)
-  ├── main.py           # Entry point for the FastAPI application
-  ├── gmail_service.py  # Gmail API integration
-```
+* Fetch and store emails (unread or all) from your Gmail account
+* Parse sender, subject, and metadata
+* Display and manage stored emails via web UI
 
-## Setup Instructions
+### 🧠 AI Email Classifier
+
+* Classifies emails into:
+
+  * `Important`
+  * `Data`
+  * `Regular`
+  * `Suspected Spam`
+  * `Uncategorized`
+* Uses OpenAI Assistants API with batch processing
+* Avoids sending spammy emails to the AI using DNS-based reputation checks (Spamhaus)
+
+### 🛀 Maintenance Tools
+
+* Wipe email/reputation tables
+* Fetch emails from the past 14 days
+* Manually reclassify all uncategorized emails in batches
+* Backup and restore email data
+
+### 📊 Sender Reputation Tracking
+
+* Tracks frequency and type of classification per sender
+* Plans for half-life based scoring system (coming soon)
+* Manual override support
+
+### 💥 Web Interface
+
+* Clean, fast, local UI built on FastAPI
+* Tabs for Gmail, AI interactions, settings & debug tools
+* Live watchdog status, unread counters, email browser
+
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- Python 3.8+
-- Node.js (for frontend development, if needed)
-- Gmail API credentials
-- OpenAI API keys
+* Docker
+* OpenAI API Key
+* Gmail OAuth token (stored in `/data/token.json`)
 
-### Installation
+### Clone and Run
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-repo/synthia-standalone.git
-   cd synthia-standalone
-   ```
-
-2. Install Python dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. Set up environment variables:
-   - `OPENAI_API_KEY`: Your OpenAI API key.
-   - `OPENAI_ADMIN_API_KEY`: Admin API key for OpenAI usage tracking.
-   - `GOOGLE_APPLICATION_CREDENTIALS`: Path to your Gmail API credentials JSON file.
-
-4. Initialize the database:
-   ```bash
-   python -c "from utils.database import initialize_database; initialize_database()"
-   ```
-
-5. Start the application:
-   ```bash
-   uvicorn app.main:app --reload
-   ```
-
-6. Access the application at `http://127.0.0.1:8000`.
-
-## Usage
-
-### Web Interface
-
-- **Home**: Test the backend and view the welcome message.
-- **Gmail**: Fetch emails, view unread counts, and manage stored emails.
-- **AI**: Chat with the AI assistant and view usage statistics.
-- **Settings**: Perform maintenance tasks like clearing database tables.
-
-### API Endpoints
-
-- `/api/gmail/fetch`: Fetch emails from Gmail.
-- `/api/gmail/list`: List stored emails.
-- `/api/openai/chat`: Interact with the AI assistant.
-- `/api/ai/usage`: Get OpenAI usage statistics.
-
-## Development
-
-### Frontend
-
-Static files are located in the `static/` directory. Modify the HTML, CSS, or JavaScript files as needed.
-
-### Backend
-
-The backend is built with FastAPI. Add or modify routes in the `routers/` directory.
-
-### Testing
-
-Run tests (if implemented) using:
 ```bash
-pytest
+git clone https://github.com/danhajduk/synthia-standalone.git
+cd synthia-standalone
+./deploy.sh
 ```
 
-## License
+Then visit [http://localhost:5010](http://localhost:5010)
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+---
 
-## Contributing
+## 📂 Project Structure
 
-Contributions are welcome! Please open an issue or submit a pull request.
+```text
+/app
+👉️ main.py                # FastAPI entrypoint
+👉️ gmail_service.py       # Gmail API interface
+👉️ utils/
+   👉️ database.py        # DB schema and helpers
+   👉️ classifier.py      # AI + Spamhaus logic
+👉️ routers/
+   👉️ gmail.py           # Gmail routes
+   👉️ openai_routes.py   # AI routes
+   👉️ system.py          # Health and utility
+👉️ static/                # Frontend assets
+   👉️ index.html
+   👉️ script.js
+   👉️ pages/
+```
 
-## Acknowledgments
+---
 
-- [FastAPI](https://fastapi.tiangolo.com/)
-- [OpenAI](https://openai.com/)
-- [Google Gmail API](https://developers.google.com/gmail/api)
+## 🧪 Debug Tools
+
+Located under the `Settings → Debug` section:
+
+* Fetch 14 days of email history
+* Batch reclassify any uncategorized emails
+* Backup/restore `emails` table
+* View system status (watchdog)
+
+---
+
+## 🛡 Privacy
+
+All data remains local — your emails and OpenAI prompts are processed privately inside your own Docker container. No analytics or external telemetry.
+
+---
+
+## 📄 License
+
+MIT
+
+---
+
+> Made with ❤️ by Dan Hajduk
