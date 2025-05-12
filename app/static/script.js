@@ -21,15 +21,20 @@ function loadSection(section) {
       // Initialize specific logic for certain sections
       if (section === 'settings') {
         startWatchdog();
-        loadEmailStats();  // ← Add this line
+        loadEmailStats();
       } else if (section === 'gmail') {
         fetchGmailUnread();
         loadStoredEmails();
+        loadGmailStats();
       } else if (section === 'ai') {
         loadAiUsage();
       } else if (section === 'reputation') {
         loadReputation();
-      }      
+      } else if (section === 'local_classifier') {
+        fetchClassifierMetrics();
+        fetchLastRun();
+        loadLastLocalModelUse();
+      }
     })
     .catch(error => {
       console.error(error);
@@ -80,7 +85,7 @@ function startWatchdog() {
  */
 function fetchGmailUnread() {
   const base = window.location.pathname.replace(/\/$/, "");
-  fetch(`${base}/api/gmail/unread`)
+  fetch(`${base}/api/gmail/fetch/unread`)
     .then(res => res.json())
     .then(data => {
       document.getElementById('gmail-unread-today').textContent = data.unread_today ?? '–';
@@ -106,7 +111,7 @@ function fetchAndStoreEmails() {
         resultDiv.textContent = `✅ Fetched and stored ${data.fetched} email(s). Classifying...`;
 
         // Trigger classification
-        fetch(`${base}/api/gmail/classify`, { method: "POST" })
+        fetch(`${base}/api/gmail/classify/ai_classify`, { method: "POST" })
           .then(res => res.json())
           .then(classifyData => {
             resultDiv.textContent += ` ✅ Classified ${classifyData.classified} email(s).`;
@@ -209,6 +214,59 @@ async function loadStoredEmails() {
   }
 }
 
+/**
+ * Fetches and displays Gmail statistics.
+ */
+function loadGmailStats() {
+  const base = window.location.pathname.replace(/\/$/, "");
+
+  fetch(`${base}/api/gmail/stats`)
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById("gmail-total-count").textContent = data.total ?? "–";
+      document.getElementById("gmail-uncategorized-count").textContent = data.unclassified ?? "–";
+    })
+    .catch(err => {
+      console.error("Failed to load Gmail stats", err);
+    });
+}
+
+/**
+ * Fetches and displays sender reputation data.
+ */
+function loadReputation() {
+  const base = window.location.pathname.replace(/\/$/, "");
+  const body = document.getElementById("reputation-table-body");
+  body.innerHTML = `<tr><td colspan="6">Loading...</td></tr>`;
+
+  fetch(`${base}/api/gmail/reputation`)
+    .then(res => res.json())
+    .then(data => {
+      const senders = data.senders ?? [];
+      if (senders.length === 0) {
+        body.innerHTML = `<tr><td colspan="6">No data available.</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = "";
+      senders.forEach(sender => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${sender.email}</td>
+          <td>${sender.name}</td>
+          <td>${sender.score.toFixed(2)}</td>
+          <td>${sender.state}</td>
+          <td>${Object.entries(sender.counts).map(([label, count]) => `${label}: ${count}`).join(", ")}</td>
+          <td>${new Date(sender.updated).toLocaleString()}</td>
+        `;
+        body.appendChild(row);
+      });
+    })
+    .catch(err => {
+      console.error("Sender reputation fetch error:", err);
+      body.innerHTML = `<tr><td colspan="6">Error loading reputation data.</td></tr>`;
+    });
+}
 
 /**
  * Sends a chat message to the AI assistant and displays the response.
@@ -511,5 +569,104 @@ function recalculateReputation() {
     .catch(err => {
       console.error("Reputation update error:", err);
       statusDiv.textContent = "❌ Request failed.";
+    });
+}
+
+
+function fetchClassifierMetrics() {
+  const base = window.location.pathname.replace(/\/$/, "");
+  fetch(`${base}/api/gmail/classifier/metrics`)
+    .then(res => res.json())
+    .then(data => {
+      const tbody = document.querySelector("#metrics-table tbody");
+      tbody.innerHTML = data.metrics.map(row =>
+        `<tr><td>${row.label}</td><td>${row.precision}</td><td>${row.recall}</td><td>${row.f1}</td><td>${row.support}</td></tr>`
+      ).join("");
+    });
+}
+
+function fetchLastRun() {
+  const base = window.location.pathname.replace(/\/$/, "");
+  fetch(`${base}/api/gmail/classifier/last_run`)
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById("last-run-time").textContent = data.last_run || "–";
+    });
+}
+
+function loadLastLocalModelUse() {
+  const base = window.location.pathname.replace(/\/$/, "");
+  const display = document.getElementById("last-local-use");
+
+  fetch(`${base}/api/classifier/last_used`)
+    .then(res => res.json())
+    .then(data => {
+      display.textContent = data.last_used
+        ? `🕒 Last used: ${new Date(data.last_used).toLocaleString()}`
+        : "⏱️ Never used yet.";
+    })
+    .catch(err => {
+      console.error("Error loading last classifier usage:", err);
+      display.textContent = "⚠️ Error loading last use timestamp.";
+    });
+}
+
+function clearTrainingData() {
+  fetch('/api/gmail/train/clear', { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+      alert("✅ Training data cleared.");
+    })
+    .catch(err => {
+      console.error("❌ Clear training data error:", err);
+      alert("❌ Failed to clear training data.");
+    });
+}
+
+function retrainFromScratch() {
+  fetch('/api/gmail/train/retrain_all', { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+      alert("✅ Model retrained from scratch.");
+    })
+    .catch(err => {
+      console.error("❌ Retraining failed:", err);
+      alert("❌ Failed to retrain model.");
+    });
+}
+
+function trainManual24() {
+  fetch('/api/gmail/train/manual24', { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+      alert("✅ Manual tags (last 24h) used for training.");
+    })
+    .catch(err => {
+      console.error("❌ Manual training failed:", err);
+      alert("❌ Failed to train on manual tags.");
+    });
+}
+
+function trainAi24() {
+  fetch('/api/gmail/train/ai24', { method: 'POST' })
+    .then(res => res.json())
+    .then(data => {
+      alert("✅ AI tags (last 24h) used for training.");
+    })
+    .catch(err => {
+      console.error("❌ AI training failed:", err);
+      alert("❌ Failed to train on AI tags.");
+    });
+}
+function fetchTotalEmails() {
+  const base = window.location.pathname.replace(/\/$/, "");
+  fetch(`${base}/api/gmail/count`)
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById("gmail-total-emails").textContent = data.total_emails ?? "–";
+    })
+    .catch(err => {
+      console.error("Total email count fetch error:", err);
+      document.getElementById("gmail-total-emails").textContent = "Error";
     });
 }

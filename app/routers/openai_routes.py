@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 openai.api_key = os.getenv("OPENAI_API_KEY")
 OPENAI_ADMIN_KEY = os.getenv("OPENAI_ADMIN_API_KEY")
 
-# Create routers for OpenAI-related endpoints
+# Initialize routers
 router = APIRouter()
 router_ai = APIRouter()
 
@@ -49,7 +49,7 @@ async def openai_chat(request: Request):
         return JSONResponse({"reply": reply})
 
     except Exception as e:
-        # Handle errors and return a 500 response
+        logging.error(f"❌ Error during OpenAI chat: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @router.get("/cost")
@@ -80,7 +80,7 @@ def get_openai_monthly_cost():
 
         return JSONResponse({"used": round(total_usage, 2), "limit": round(limit, 2)})
     except Exception as e:
-        # Handle errors and return a 500 response
+        logging.error(f"❌ Error retrieving OpenAI cost: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @router_ai.get("/usage")
@@ -110,8 +110,8 @@ def get_ai_usage():
             resp = requests.get(url, headers=headers)
             if resp.ok:
                 return resp.json().get("total_usage", 0) / 100.0
-        except:
-            pass
+        except Exception as e:
+            logging.error(f"❌ Error fetching cost for range {start} to {end}: {e}")
         return 0.0
 
     try:
@@ -123,5 +123,5 @@ def get_ai_usage():
             "last_month": round(last_month_cost, 4)
         })
     except Exception as e:
-        # Handle errors and return a 500 response
+        logging.error(f"❌ Error retrieving AI usage: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})

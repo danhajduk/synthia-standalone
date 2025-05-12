@@ -35,7 +35,7 @@ def classify_email_batch():
             SELECT id, sender, sender_email, subject, category
             FROM emails
             WHERE category IS NULL OR category = 'Uncategorized'
-            LIMIT 20
+            LIMIT 40
         """)
         rows = cursor.fetchall()
         conn.close()
@@ -134,7 +134,7 @@ def classify_email_batch():
         cursor = conn.cursor()
         for item in parsed:
             raw_category = item.get("category", "").strip().title()
-            category = raw_category if raw_category in VALID_CATEGORIES else "Uncategorized"
+            category = raw_category if raw_category in VALID_CATEGORIES else "Flagged For Review"
             cursor.execute(
                 "UPDATE emails SET category = ?, predicted_by = ? WHERE id = ?",
                 (category, "openai", item["id"])
@@ -178,14 +178,10 @@ def check_sender_spamhaus(email):
 def predict_with_local_model(sender, sender_email, subject):
     """
     Predicts the category of an email using a local machine learning model.
-
-    Args:
-        sender (str): The sender's name.
-        sender_email (str): The sender's email address.
-        subject (str): The email's subject.
+    Updates the system table with the last prediction timestamp.
 
     Returns:
-        tuple: Predicted label and confidence percentage, or (None, None) if the model is unavailable.
+        tuple: (Predicted label, confidence percentage), or (None, None) if model is missing.
     """
     if not os.path.exists(MODEL_PATH):
         return None, None
@@ -195,5 +191,8 @@ def predict_with_local_model(sender, sender_email, subject):
     predicted_label = model.predict([input_text])[0]
     predicted_proba = model.predict_proba([input_text])[0]
     confidence = max(predicted_proba)
+
+    # ✅ Save last prediction timestamp
+    save_system_value("local_model_last_prediction", datetime.utcnow().isoformat())
 
     return predicted_label, round(confidence * 100)

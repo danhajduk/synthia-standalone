@@ -1,9 +1,16 @@
+# Standard library imports
+import sqlite3
+import json
+import logging
+
+# Third-party imports
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-import sqlite3
+
+# Application-specific imports
 from utils.database import get_db_path
 
-# Create a router for system-related endpoints
+# Initialize router
 router = APIRouter()
 db_path = get_db_path()
 
@@ -17,6 +24,9 @@ def hello():
 
 @router.post("/api/clear_all_tables")
 def clear_all_tables():
+    """
+    Clears all data from the 'emails' and 'sender_reputation' tables.
+    """
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
@@ -26,12 +36,16 @@ def clear_all_tables():
         conn.close()
         return JSONResponse({"status": "success", "message": "All tables cleared."})
     except Exception as e:
+        logging.error(f"❌ Error clearing tables: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 @router.get("/model/metrics")
 def get_model_metrics():
+    """
+    Retrieves the evaluation metrics of the local machine learning model.
+    """
     try:
-        conn = sqlite3.connect(get_db_path())
+        conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
         cursor.execute("SELECT value FROM system WHERE key = ?", ("local_model_evaluation",))
         row = cursor.fetchone()

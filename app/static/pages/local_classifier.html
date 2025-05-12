@@ -1,0 +1,42 @@
+<!-- Local Pre-Classifier -->
+<h2>🧠 Local Pre-Classifier</h2>
+<div style="display: flex; gap: 30px;">
+  <!-- Metrics Table -->
+  <div style="flex: 7;">
+    <h3>📊 Evaluation Metrics</h3>
+    <table id="metrics-table" border="1" cellspacing="0" cellpadding="6" style="width: 100%;">
+      <thead>
+        <tr>
+          <th>Label</th>
+          <th>Precision</th>
+          <th>Recall</th>
+          <th>F1-score</th>
+          <th>Support</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- Will be populated dynamically -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Controls -->
+  <div style="flex: 3; display: flex; flex-direction: column; gap: 12px;">
+    <button onclick="clearTrainingData()">🗑️ Clear Training Data</button>
+    <button onclick="retrainFromScratch()">♻️ Retrain from Scratch (AI & Manual)</button>
+    <button onclick="trainManual24()">🧠 Train Manual Tags (Last 24h)</button>
+    <button onclick="trainAi24()">🤖 Train AI Tags (Last 24h)</button>
+
+    <label for="min-confidence">⚙️ Minimum Confidence</label>
+    <input type="number" id="min-confidence" min="0" max="1" step="0.01" value="0.5" />
+    <button onclick="saveConfidence()">💾 Save Threshold</button>
+
+    <div style="margin-top: 20px; font-size: 0.9rem;">
+      Last reclassification: <strong id="last-run-time">–</strong>
+    </div>
+    <div id="last-local-use" style="font-size: 0.9rem; color: gray; margin-bottom: 1rem;">
+        🕒 Loading last use timestamp...
+      </div>
+      
+</div>
+</div>

@@ -82,7 +82,7 @@ class GmailService:
         # Parse email metadata
         email_data = []
         logging.info(f"📬 Parsing {len(messages)} messages...")
-        for msg in messages:
+        for idx, msg in enumerate(messages, 1):
             try:
                 msg_data = self.service.users().messages().get(
                     userId='me', id=msg['id'],
@@ -95,14 +95,12 @@ class GmailService:
                 subject = headers.get('Subject', '(No Subject)')
 
                 logging.debug(f"🧪 Raw From header: {sender_raw}")
-                # ✅ Use robust parser for name + email
                 sender_name, sender_email = parseaddr(sender_raw)
                 if not sender_name:
                     sender_name = sender_email
 
                 logging.debug(f"✅ Parsed email: {sender_name} <{sender_email}> | {subject}")
 
-                # Get timestamp in ISO format
                 timestamp = int(msg_data.get("internalDate", 0)) / 1000
                 received_at = datetime.utcfromtimestamp(timestamp).isoformat()
 
@@ -117,5 +115,8 @@ class GmailService:
             except Exception as e:
                 logging.warning(f"⚠️ Failed to parse message {msg.get('id')}: {e}")
 
+            # Progress log every 100 messages
+            if idx % 100 == 0 or idx == len(messages):
+                logging.info(f"📦 Parsed {idx}/{len(messages)} messages ({(idx / len(messages)) * 100:.1f}%)...")
         logging.info(f"📬 Total parsed emails: {len(email_data)}")
         return email_data

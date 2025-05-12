@@ -2,6 +2,7 @@
 import sqlite3
 import logging
 import json
+from datetime import datetime
 
 # Third-party imports
 from sklearn.pipeline import Pipeline
@@ -88,7 +89,8 @@ def train_local_classifier(source="manual"):
         "train_size": len(X_train),
         "test_size": len(X_test),
         "accuracy": acc,
-        "report": report
+        "report": report,
+        "timestamp": datetime.utcnow().isoformat()
     })))
     conn.commit()
     conn.close()

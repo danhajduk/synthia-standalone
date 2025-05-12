@@ -1,7 +1,22 @@
-# This file allows the 'routers' directory to be treated as a Python package.
+"""
+This package contains all API routers for the application.
+"""
 
-# Import submodules from the 'routers' package
-from . import system, gmail, openai_routes
+from . import system, openai_routes
+from .gmail import (
+    router as fetch_router,  # Correct import for fetch router
+    list_router,
+    stats_router,
+    classify_router,
+    reputation_router
+)
 
-# Define the public API of the 'routers' package
-__all__ = ["system", "gmail", "openai_routes"]
+__all__ = [
+    "system",
+    "openai_routes",
+    "fetch_router",
+    "list_router",
+    "stats_router",
+    "classify_router",
+    "reputation_router"
+]
