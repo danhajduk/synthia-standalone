@@ -10,7 +10,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 # Application-specific imports
-from utils.database import get_db_path
+from app.utils.database import get_db_path
 
 
 # Initialize router

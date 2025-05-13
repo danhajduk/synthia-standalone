@@ -10,15 +10,17 @@ import openai
 import dns.resolver
 from joblib import load
 from collections import Counter
+from fastapi import APIRouter
 
 # Application-specific imports
-from utils.database import get_db_path
-from utils.trainer import combine_features
+from app.utils.database import get_db_path
+from app.utils.trainer import combine_features
 
 # Constants
 openai.api_key = os.getenv("OPENAI_API_KEY")
 db_path = get_db_path()
 MODEL_PATH = "/data/local_classifier.joblib"
+router = APIRouter()
 
 def classify_email_batch():
     """
@@ -196,3 +198,4 @@ def predict_with_local_model(sender, sender_email, subject):
     save_system_value("local_model_last_prediction", datetime.utcnow().isoformat())
 
     return predicted_label, round(confidence * 100)
+

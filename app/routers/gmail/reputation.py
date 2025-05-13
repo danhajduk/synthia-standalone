@@ -9,7 +9,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 # Application-specific imports
-from utils.database import get_db_path, update_sender_reputation
+from app.utils.database import get_db_path, update_sender_reputation
 
 # Initialize router
 router = APIRouter()

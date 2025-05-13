@@ -1,33 +1,32 @@
-# Use a lightweight Python image
-FROM python:3.11-slim
+# -------- Frontend build stage --------
+    FROM node:20-alpine AS frontend
 
-# Set environment variables
-ENV LANG=C.UTF-8
+    WORKDIR /app/frontend
+    COPY frontend/ ./
+    
+    RUN npm install && npm run build
+    
+    # -------- Backend + final image --------
+    FROM python:3.11-slim AS backend
+    
+    WORKDIR /app
+    
+    # Copy backend
+    COPY app/ ./app/
+    COPY models/ ./models/
+    COPY requirements.txt .
 
-# Install required system packages
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-    build-essential libffi-dev && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
 
-# Set working directory
-WORKDIR /app
-
-# Copy app files (including gmail_service.py, main.py, static/, etc.)
-COPY app /app
-
-# Copy requirements and install dependencies
-COPY requirements.txt ./
-RUN pip install -r requirements.txt
-# RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy startup script
-COPY run.sh /run.sh
-RUN chmod +x /run.sh
-
-# Expose app port
-EXPOSE 5010
-
-# Run the app
-CMD ["/run.sh"]
+    # Copy frontend build output from previous stage
+    COPY --from=frontend /app/frontend/dist ./frontend/dist
+    
+    # Install dependencies
+    RUN pip install --no-cache-dir -r requirements.txt
+    
+    ENV PORT=5010
+    EXPOSE ${PORT}
+    ENV PYTHONUNBUFFERED=1
+    
+    # Start FastAPI
+    CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "5010"]
+    

@@ -9,9 +9,9 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 # Application-specific imports
-from gmail_service import GmailService
-from utils.database import get_db_path
-from utils.classifier import classify_email_batch
+from app.gmail_service import GmailService
+from app.utils.database import get_db_path
+from app.utils.classifier import classify_email_batch
 
 # Initialize router
 router = APIRouter()
