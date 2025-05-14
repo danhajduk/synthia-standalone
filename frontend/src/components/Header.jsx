@@ -1,4 +1,5 @@
 import React from 'react';
+import { getGreeting, getSummaryLine } from '../utils/greetingUtils';
 
 const Header = () => {
   const now = new Date();
@@ -6,14 +7,10 @@ const Header = () => {
   const formattedDate = now.toLocaleDateString();
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-      <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: '#d1d5db' }}>Good evening, Dan.</h2>
-      <p style={{ fontSize: '0.875rem', color: '#9ca3af' }}>
-        I've prepared your assistant summary below.
-      </p>
-      <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.25rem' }}>
-        Last synced: {formattedDate} at {formattedTime}
-      </p>
+    <div className="flex flex-col justify-center">
+      <h2 className="text-2xl font-semibold text-gray-100">{getGreeting()}</h2>
+      <p className="text-sm text-gray-400">{getSummaryLine()}</p>
+      <p className="text-xs text-gray-500 mt-1">Last synced: {formattedDate} at {formattedTime}</p>
     </div>
   );
 };

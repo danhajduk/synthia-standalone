@@ -4,14 +4,63 @@ import Header from './components/Header';
 import SynthiaAvatar from './components/SynthiaAvatar';
 import SummaryCard from './components/SummaryCard';
 import { useApiFetch } from './hooks/useApiFetch';
+import Classifier from './pages/Classifier'; // make sure you create this file
+import { Routes, Route, useNavigate } from 'react-router-dom';
+
+
+
+function GmailClassifierCard({ stats, loading, error, navigate }) {
+  if (loading) {
+    return <SummaryCard title="Gmail Classifier" details={["Loading..."]} actions={[]} />;
+  }
+
+  if (error) {
+    return <SummaryCard title="Gmail Classifier" details={["Error loading data"]} actions={[]} />;
+  }
+
+  return (
+    <SummaryCard
+      title="Gmail Classifier"
+      details={[`${stats.total} emails Stored`, `${stats.unclassified} unclassified`]}
+      actions={[]}
+    />
+  );
+}
+
+function CalendarCard() {
+  return (
+    <SummaryCard
+      title="Calendar"
+      details={["Calendar placeholder 1", "Calendar placeholder 2"]}
+      actions={[
+        { label: "Action 1", onClick: () => console.log("Action 1") },
+        { label: "Action 2", onClick: () => console.log("Action 2") },
+        { label: "Action 3", onClick: () => console.log("Action 3") },
+      ]}
+    />
+  );
+}
+function PlaceHolderCard() {
+  return (
+    <SummaryCard
+      title="Placeholder"
+      details={["Placeholder 1", "Placeholder 2"]}
+      actions={[
+        { label: "Action 1", onClick: () => console.log("Action 1") },
+        { label: "Action 2", onClick: () => console.log("Action 2") },
+        { label: "Action 3", onClick: () => console.log("Action 3") },
+      ]}
+    />
+  );
+}
 
 function App() {
+  const navigate = useNavigate();
   const { data: stats, loading: stats_loading, error: stats_error } = useApiFetch('/api/gmail/stats');
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar />
-
       <main style={{ flex: 1, padding: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
           <SynthiaAvatar />
@@ -24,48 +73,15 @@ function App() {
           gap: '1.5rem',
           marginTop: '2rem',
         }}>
-        {stats_loading ? (
-          <SummaryCard title="Gmail Classifier" details={["Loading..."]} actions={[]} 
+          <GmailClassifierCard
+            stats={stats}
+            loading={stats_loading}
+            error={stats_error}
+            navigate={navigate}
           />
-        ) : stats_error ? (
-          <SummaryCard title="Gmail Classifier" details={["Error loading data"]} actions={[]}
-          />
-        ) : (
-          <SummaryCard 
-            title="Gmail Classifier" 
-            details={[`${stats.total} emails Stored`, `${stats.unclassified} unclassified` ]}
-            actions={["Classify Now", "View Inbox" ]}
-          />
-        )}
-          <SummaryCard
-            title="Calendar"
-            details={["Calendar placeholder 1", "Calendar placeholder 2"]}
-            actions={["Action 1", "Action 2", "Action 3"]}
-          />
-
-          <SummaryCard
-            title="Reminders & Tasks"
-            details={["Reminder placeholder 1", "Reminder placeholder 2"]}
-            actions={["Action 1", "Action 2"]}
-          />
-
-          <SummaryCard
-            title="System Monitor"
-            details={["System placeholder 1", "System placeholder 2"]}
-            actions={["Action 1"]}
-          />
-
-          <SummaryCard
-            title="Notifications"
-            details={["Notification placeholder 1", "Notification placeholder 2"]}
-            actions={["Action 1"]}
-          />
-
-          <SummaryCard
-            title="Assistant Tools"
-            details={["Tool placeholder 1", "Tool placeholder 2", "Tool placeholder 3"]}
-            actions={["Action 1"]}
-          />
+          <PlaceHolderCard />
+          <PlaceHolderCard />
+          <PlaceHolderCard />
         </div>
 
         <footer style={{ marginTop: '3rem', fontSize: '0.875rem', color: '#9ca3af' }}>

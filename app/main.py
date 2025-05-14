@@ -3,9 +3,12 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import logging
 
 from app.routers import gmail, openai_routes, system
 from app.utils.database import initialize_database, get_db_path
+
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 app = FastAPI()
 

@@ -28,7 +28,7 @@ def classify_email_batch():
     """
     try:
         assistant_id = "asst_HCLbiRcnBGBuK40Ax5jxkRcB"
-        logging.info("🧠 Classifying emails...")
+        logging.info("🧠 Classifying emails... (40)")
 
         # Fetch unclassified emails
         conn = sqlite3.connect(db_path)
@@ -74,23 +74,24 @@ def classify_email_batch():
         # Create assistant thread
         thread = openai.beta.threads.create()
 
-        system_prompt = (
-            "You are an email classification assistant. Classify each email below into exactly one of the following categories:\n\n"
-            "• Important – High-priority or time-sensitive email\n"
-            "• Data – Structured content or logs (e.g. appointments, reminders, receipts)\n"
-            "• Regular – Everyday correspondence not requiring urgent attention\n"
-            "• Work – Job-related or professional messages\n"
-            "• Personal – From friends or family\n"
-            "• Social – Social networks or events\n"
-            "• Newsletters – Recurring subscription content\n"
-            "• Notifications – Automated alerts from apps/services\n"
-            "• Receipts – Purchase confirmations or billing info\n"
-            "• System Updates – Notifications from platforms or operating systems\n"
-            "• Flagged for Review – Ambiguous or requires human review\n"
-            "• Suspected Spam – Possibly unwanted or unsolicited\n"
-            "Only reply with a raw JSON array of objects using this format:\n"
-            "[{\"id\": \"<email_id>\", \"category\": \"<chosen_category>\"}, ...]"
-        )
+        # system_prompt = (
+        #     "You are an email classification assistant. Classify each email below into exactly one of the following categories:\n\n"
+        #     "• Important – High-priority or time-sensitive email\n"
+        #     "• Data – Structured content or logs (e.g. appointments, reminders, receipts)\n"
+        #     "• Regular – Everyday correspondence not requiring urgent attention\n"
+        #     "• Work – Job-related or professional messages\n"
+        #     "• Personal – From friends or family\n"
+        #     "• Social – Social networks or events\n"
+        #     "• Newsletters – Recurring subscription content\n"
+        #     "• Notifications – Automated alerts from apps/services\n"
+        #     "• Receipts – Purchase confirmations or billing info\n"
+        #     "• System Updates – Notifications from platforms or operating systems\n"
+        #     "• Flagged for Review – Ambiguous or requires human review\n"
+        #     "• Suspected Spam – Possibly unwanted or unsolicited\n"
+        #     "Only reply with a raw JSON array of objects using this format:\n"
+        #     "[{\"id\": \"<email_id>\", \"category\": \"<chosen_category>\"}, ...]"
+        # )
+        system_prompt = ( "Please classify the following emails:")
 
         formatted_emails = "\n\n".join(
             f"ID: {email['id']}\nSender: {email['sender_name']} <{email['sender_email']}>\nSubject: {email['subject']}"

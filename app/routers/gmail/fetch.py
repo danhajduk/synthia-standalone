@@ -177,3 +177,35 @@ def classify_all_in_batches():
     except Exception as e:
         logging.error(f"❌ Error during batch classification: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@router.get("/debug/classify-one-batch")
+def classify_one_batch():
+    """
+    Classifies a single batch of unclassified emails using OpenAI.
+    """
+    try:
+        result = classify_email_batch()
+        batch_size = len(result) if result else 0
+
+        # Check how many unclassified emails remain
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT COUNT(*) FROM emails
+            WHERE category IS NULL OR category = 'Uncategorized'
+        """)
+        remaining = cursor.fetchone()[0]
+        conn.close()
+
+        logging.info(f"🧠 Classified {batch_size} emails in one batch — 📨 {remaining} remaining unclassified")
+
+        return JSONResponse({
+            "status": "completed" if batch_size else "skipped",
+            "batch_size": batch_size,
+            "remaining_unclassified": remaining
+        })
+
+    except Exception as e:
+        logging.error(f"❌ Error during single batch classification: {e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})

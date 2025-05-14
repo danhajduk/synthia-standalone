@@ -14,7 +14,9 @@ const SummaryCard = ({ title, details, actions }) => {
 
       <div>
         {actions.map((action, index) => (
-          <button key={index}>{action}</button>
+          <button key={index} onClick={action.onClick}>
+            {action.label}
+          </button>
         ))}
       </div>
     </div>
