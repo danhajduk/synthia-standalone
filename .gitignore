@@ -6,3 +6,4 @@ credentials.json
 data/
 deploy.sh
 *.sqlite
+external.sh
