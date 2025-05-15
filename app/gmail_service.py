@@ -73,7 +73,7 @@ class GmailService:
                 ).execute()
                 batch = response.get('messages', [])
                 messages.extend(batch)
-                logging.info(f"➕ Fetched {len(batch)} more messages (paginated)")
+                logging.info(f"➕ Fetched {len(batch)} more messages (paginated) out of {len(messages)} total)")
 
         except HttpError as e:
             logging.error(f"❌ Gmail API error: {e}")

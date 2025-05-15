@@ -1,17 +1,15 @@
-import { useBadgeStats } from '../hooks/useBadgeStats';
-
-export default function ClassifierBadges() {
-  const { data, loading, error } = useBadgeStats(); // default URL is stats
-
+export default function ClassifierBadges({ data, loading, error }) {
   if (loading) return <div>Loading badges...</div>;
   if (error || !data) return <div style={{ color: 'red' }}>Failed to load badge data.</div>;
 
+  console.log("✅ Badge stats:", data);
+
   const badges = [
-    { label: "Unread in Gmail", value: "14" },
+    { label: "Unread in Gmail", value: data.unread ?? "?" },
     { label: "Emails Stored", value: data.total ?? 0 },
     { label: "Unclassified", value: data.unclassified ?? 0 },
-    { label: "Last Pre-classify", value: "May 12, 1:34 PM" },
-    { label: "Last Trained", value: "May 11, 1:02 AM" }
+    { label: "Last Pre-classify", value: data.last_preclassify ?? "?" },
+    { label: "Last Trained", value: data.last_trained ?? "?" }
   ];
 
   return (

@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useStatusAction } from '../hooks/useStatusAction';
+import { useStatusAndRefresh } from '../hooks/useStatusAndRefresh';
 
 export default function ClassifierControls({ onBadgeUpdate }) {
   const [threshold, setThreshold] = useState(0.5);
   const navigate = useNavigate();
-  const { trigger } = useStatusAction();
+  const { trigger, loading, result, error } = useStatusAndRefresh();
 
   const localButtons = [
     { label: "Retrain Model", action: () => console.log("Retrain Model") },
@@ -21,19 +21,11 @@ export default function ClassifierControls({ onBadgeUpdate }) {
   const remoteButtons = [
     {
       label: "Classify One Batch",
-      action: () => trigger('/api/gmail/debug/classify-one-batch', () => {
-        setTimeout(() => {
-          onBadgeUpdate(); // refresh stats after delay
-        }, 2000);
-      })
-   },
+      action: () => trigger('/api/gmail/debug/classify-one-batch', onBadgeUpdate)
+    },
     {
       label: "Classify All",
-      action: () => trigger('/api/gmail/debug/classify-all', () => {
-        setTimeout(() => {
-          onBadgeUpdate(); // refresh stats after delay
-        }, 2000);
-      })
+      action: () => trigger('/api/gmail/debug/classify-all', onBadgeUpdate)
     }
   ];
   
@@ -61,7 +53,7 @@ export default function ClassifierControls({ onBadgeUpdate }) {
             </button>
           ))}
         </div>
-        <div style={{ marginTop: '1rem' }}>
+        <div>
           <label style={{ color: '#e5e7eb', fontSize: '0.875rem' }}>Model Threshold:</label>
           <input
             type="number"
@@ -91,16 +83,18 @@ export default function ClassifierControls({ onBadgeUpdate }) {
             <button
               key={idx}
               onClick={btn.action}
+              disabled={loading}
               style={{
                 padding: '0.5rem 1rem',
                 background: '#6b21a8',
                 color: 'white',
                 border: 'none',
                 borderRadius: '0.375rem',
-                cursor: 'pointer'
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.6 : 1
               }}
             >
-              {btn.label}
+              {loading ? 'Classifying, please wait...' : btn.label}
             </button>
           ))}
         </div>

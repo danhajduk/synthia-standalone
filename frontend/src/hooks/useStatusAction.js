@@ -1,4 +1,3 @@
-// src/hooks/useStatusAction.js
 import { useState, useCallback } from 'react';
 
 export function useStatusAction() {
@@ -17,8 +16,15 @@ export function useStatusAction() {
       setResult(json);
 
       if (json.status === 'completed' || json.status === 'failed') {
-        onComplete?.(json); // refresh badges or show toast
+        // Delay before triggering completion callback
+        setTimeout(() => {
+          onComplete?.(json);
+        }, 2000); // 2 seconds
+      } else {
+        // Immediate callback (if needed)
+        onComplete?.(json);
       }
+
     } catch (err) {
       setError(err);
     } finally {

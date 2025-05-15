@@ -13,7 +13,7 @@ import { useBadgeStats } from '../hooks/useBadgeStats';
 export default function Classifier() {
   const { data: metricsJson, loading: class_loading, error: class_error } = useApiFetch('/model/metrics');
   // const { data: stats, loading: stats_loading, error: stats_error } = useApiFetch('/api/gmail/stats');
-  const { refresh: refreshBadges } = useBadgeStats(); 
+const { data, loading, error, refresh } = useBadgeStats();
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -24,14 +24,14 @@ export default function Classifier() {
           <Header />
         </div>
 
-        <ClassifierBadges />
+        <ClassifierBadges data={data} loading={loading} error={error} />
 
         <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
           <div style={{ flex: 1 }}>
           <ModelMetricsTable data={metricsJson || {}} />
 
           </div>
-          <ClassifierControls onBadgeUpdate={refreshBadges} />
+          <ClassifierControls onBadgeUpdate={refresh} />
 
         </div>
 

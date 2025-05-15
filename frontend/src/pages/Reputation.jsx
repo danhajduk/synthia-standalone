@@ -1,34 +1,34 @@
 // src/pages/Reputation.jsx
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 import SynthiaAvatar from '../components/SynthiaAvatar';
 
-const mockSenders = [
-  {
-    email: 'promo@dealsnow.com',
-    reputation: 'Low',
-    label: 'Suspected Spam',
-    emailsReceived: 47,
-    lastSeen: '2025-05-12 14:32'
-  },
-  {
-    email: 'boss@workplace.com',
-    reputation: 'High',
-    label: 'Work',
-    emailsReceived: 189,
-    lastSeen: '2025-05-13 09:10'
-  },
-  {
-    email: 'unknown@phishy.net',
-    reputation: 'Dangerous',
-    label: 'Phishing',
-    emailsReceived: 3,
-    lastSeen: '2025-05-12 08:45'
-  }
-];
+const th = { padding: '0.75rem', textAlign: 'left' };
+const td = { padding: '0.75rem' };
 
 export default function Reputation() {
+  const [senders, setSenders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/gmail/reputation')
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then(data => {
+        setSenders(data.senders || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to load reputation data:', err);
+        setError(err.message);
+        setLoading(false);
+      });
+  }, []);
+
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
       <Sidebar />
@@ -40,34 +40,41 @@ export default function Reputation() {
 
         <h2 style={{ marginBottom: '1.5rem' }}>Sender Reputation Overview</h2>
 
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: '#374151', color: '#fff' }}>
-              <th style={th}>Sender Email</th>
-              <th style={th}>Reputation</th>
-              <th style={th}>Current Label</th>
-              <th style={th}>Emails Received</th>
-              <th style={th}>Last Seen</th>
-              <th style={th}></th>
-            </tr>
-          </thead>
-          <tbody>
-            {mockSenders.map((sender, idx) => (
-              <tr key={idx} style={{ borderBottom: '1px solid #4b5563', color: '#e5e7eb' }}>
-                <td style={td}>{sender.email}</td>
-                <td style={td}>{sender.reputation}</td>
-                <td style={td}>{sender.label}</td>
-                <td style={td}>{sender.emailsReceived}</td>
-                <td style={td}>{sender.lastSeen}</td>
-                <td style={td}>
-                  <button style={{ padding: '0.25rem 0.75rem', background: '#22c55e', color: 'white', border: 'none', borderRadius: '0.25rem' }}>
-                    Reclassify
-                  </button>
-                </td>
+        {loading ? (
+          <p>Loading reputation data...</p>
+        ) : error ? (
+          <p style={{ color: 'red' }}>Error: {error}</p>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#374151', color: '#fff' }}>
+                <th style={th}>Sender Email</th>
+                <th style={th}>Name</th>
+                <th style={th}>Reputation</th>
+                <th style={th}>Top Label</th>
+                <th style={th}>Email Count</th>
+                <th style={th}>Last Updated</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {senders.map((sender, idx) => {
+                const labelCounts = sender.counts || {};
+                const [topLabel, count] = Object.entries(labelCounts).sort((a, b) => b[1] - a[1])[0] || ["—", 0];
+
+                return (
+                  <tr key={idx} style={{ borderBottom: '1px solid #4b5563', color: '#e5e7eb' }}>
+                    <td style={td}>{sender.email}</td>
+                    <td style={td}>{sender.name}</td>
+                    <td style={td}>{sender.state} ({(sender.score * 100).toFixed(0)}%)</td>
+                    <td style={td}>{topLabel}</td>
+                    <td style={td}>{count}</td>
+                    <td style={td}>{new Date(sender.updated).toLocaleString()}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
 
         <footer style={{ marginTop: '3rem', fontSize: '0.875rem', color: '#9ca3af' }}>
           Synthia v1.0.0
@@ -76,12 +83,3 @@ export default function Reputation() {
     </div>
   );
 }
-
-const th = {
-  padding: '0.75rem',
-  textAlign: 'left'
-};
-
-const td = {
-  padding: '0.75rem'
-};

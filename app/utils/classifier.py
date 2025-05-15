@@ -4,6 +4,7 @@ import logging
 import time
 import json
 import sqlite3
+from datetime import datetime  # Add this import
 
 # Third-party imports
 import openai
@@ -14,6 +15,7 @@ from fastapi import APIRouter
 
 # Application-specific imports
 from app.utils.database import get_db_path
+from app.utils.database import save_system_value  # Ensure this import is present
 from app.utils.trainer import combine_features
 
 # Constants
@@ -22,35 +24,47 @@ db_path = get_db_path()
 MODEL_PATH = "/data/local_classifier.joblib"
 router = APIRouter()
 
-def classify_email_batch():
+def classify_email_batch(batch=None):
     """
     Classifies a batch of unclassified emails using OpenAI's assistant and updates their categories in the database.
+    If a batch is provided, it will classify the given batch instead of fetching from the database.
     """
     try:
         assistant_id = "asst_HCLbiRcnBGBuK40Ax5jxkRcB"
-        logging.info("🧠 Classifying emails... (40)")
+        logging.info("🧠 Classifying emails...")
 
-        # Fetch unclassified emails
-        conn = sqlite3.connect(db_path)
-        cursor = conn.cursor()
-        cursor.execute("""
-            SELECT id, sender, sender_email, subject, category
-            FROM emails
-            WHERE category IS NULL OR category = 'Uncategorized'
-            LIMIT 40
-        """)
-        rows = cursor.fetchall()
-        conn.close()
+        # Use the provided batch or fetch unclassified emails
+        if batch is None:
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT id, sender, sender_email, subject, category
+                FROM emails
+                WHERE category IS NULL OR category = 'Uncategorized'
+                LIMIT 100
+            """)
+            rows = cursor.fetchall()
+            conn.close()
 
-        if not rows:
-            logging.info("No unclassified emails to process.")
-            return []
+            if not rows:
+                logging.info("No unclassified emails to process.")
+                return []
+
+            batch = [
+                {
+                    "id": row[0],
+                    "sender_name": row[1],
+                    "sender_email": row[2],
+                    "subject": row[3]
+                }
+                for row in rows
+            ]
 
         # Filter using Spamhaus
         emails_to_classify = []
-        for row in rows:
-            email_id, sender_name, sender_email, subject, category = row
-            logging.debug(f"📨 Queued: {email_id} | {sender_name} <{sender_email}> | Subject: {subject} | DB Category: {category}")
+        for email in batch:
+            email_id, sender_name, sender_email, subject = email["id"], email["sender_name"], email["sender_email"], email["subject"]
+            logging.debug(f"📨 Queued: {email_id} | {sender_name} <{sender_email}> | Subject: {subject}")
 
             if check_sender_spamhaus(sender_email):
                 logging.info(f"⚠️ Skipping {sender_email} (Spamhaus match)")

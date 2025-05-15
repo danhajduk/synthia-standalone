@@ -75,7 +75,7 @@ def train_local_classifier(source="manual"):
     logging.info("\n" + classification_report(y_test, y_pred))
 
     # Save metrics to the system table
-    from utils.database import ensure_system_table
+    from app.utils.database import ensure_system_table
     ensure_system_table()
 
     conn = sqlite3.connect(get_db_path())

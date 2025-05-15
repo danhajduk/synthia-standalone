@@ -205,3 +205,20 @@ def ensure_system_table():
     """)
     conn.commit()
     conn.close()
+def save_system_value(key: str, value):
+    """
+    Saves or updates a system-wide setting in the 'system' table.
+    """
+    import sqlite3
+    import json
+    from app.utils.database import get_db_path  # or remove if already in same file
+
+    conn = sqlite3.connect(get_db_path())
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO system (key, value)
+        VALUES (?, ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+    """, (key, json.dumps(value)))
+    conn.commit()
+    conn.close()

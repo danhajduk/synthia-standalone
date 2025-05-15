@@ -2,7 +2,7 @@
 # Standard library imports
 import sqlite3
 import logging
-
+import json
 # Third-party imports
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
@@ -17,26 +17,57 @@ db_path = get_db_path()
 @router.get("/stats")
 def get_email_stats():
     """
-    Return total email count and unclassified count.
+    Return total email count, unclassified count, unread Gmail (if tracked),
+    last pre-classification time, and last training time.
     """
     try:
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
+        # Total emails
         cursor.execute("SELECT COUNT(*) FROM emails")
         total = cursor.fetchone()[0]
 
+        # Unclassified
         cursor.execute("""
             SELECT COUNT(*) FROM emails
             WHERE category IS NULL OR category = 'Uncategorized'
         """)
         unclassified = cursor.fetchone()[0]
 
+        # Last pre-classify time (based on latest local prediction)
+        cursor.execute("""
+            SELECT MAX(override_timestamp)
+            FROM emails
+            WHERE predicted_by = 'local'
+        """)
+        last_preclassify = cursor.fetchone()[0]
+
+        # Last trained model timestamp from system table
+        cursor.execute("""
+            SELECT value
+            FROM system
+            WHERE key = 'local_model_evaluation'
+        """)
+        row = cursor.fetchone()
+        last_trained = None
+        if row:
+            try:
+                value = json.loads(row[0])
+                last_trained = value.get("timestamp")
+            except json.JSONDecodeError:
+                pass
+
         conn.close()
+
         return JSONResponse({
             "total": total,
-            "unclassified": unclassified
+            "unclassified": unclassified,
+            "unread": 14,  # TODO: Replace with real sync value
+            "last_preclassify": last_preclassify,
+            "last_trained": last_trained
         })
+
     except Exception as e:
         logging.error(f"❌ Failed to get email stats: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})

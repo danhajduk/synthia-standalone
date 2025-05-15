@@ -5,8 +5,12 @@ from fastapi.middleware.cors import CORSMiddleware
 import os
 import logging
 
+import asyncio
+
 from app.routers import gmail, openai_routes, system
 from app.utils.database import initialize_database, get_db_path
+from app.utils.automations import fetch_last_hour_emails
+
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
@@ -40,3 +44,17 @@ def serve_root():
 @app.get("/{full_path:path}")
 async def spa_fallback(full_path: str):
     return FileResponse("frontend/dist/index.html")
+
+@app.on_event("startup")
+async def start_fetch_scheduler():
+    async def periodic_fetch():
+        while True:
+            try:
+                logging.info("⏰ Running scheduled fetch for last hour...")
+                fetch_last_hour_emails()  # Call directly since it's sync
+            except Exception as e:
+                logging.error(f"⚠️ Scheduled fetch failed: {e}")
+            await asyncio.sleep(180)  # 1800 seconds = 30 minutes
+
+    asyncio.create_task(periodic_fetch())
+

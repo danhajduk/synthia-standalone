@@ -61,31 +61,33 @@ export function useBadgeStats(url) {
   return { stats, loading, error, refresh: fetchStats };
 }
 
-export function useStatusAction() {
+export function useStatusAction(pollInterval = 3000, timeout = 20000) {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState(null);
 
   const trigger = useCallback(async (url, onComplete) => {
     setLoading(true);
-    setError(null);
-
     try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const json = await res.json();
+      const start = Date.now();
 
-      setResult(json);
+      while (Date.now() - start < timeout) {
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
 
-      if (json.status === 'completed' || json.status === 'failed') {
-        onComplete?.(json); // callback: e.g. refresh badge stats
+        if (json.status === 'completed' || json.status === 'failed') {
+          onComplete?.(json);
+          break;
+        }
+
+        // wait before next poll
+        await new Promise(res => setTimeout(res, pollInterval));
       }
     } catch (err) {
-      setError(err);
+      console.error("❌ useStatusAction error:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [pollInterval, timeout]);
 
-  return { trigger, loading, result, error };
+  return { trigger, loading };
 }
