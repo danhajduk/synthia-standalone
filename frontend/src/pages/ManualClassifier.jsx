@@ -7,7 +7,7 @@ import { useManualEmails } from '../hooks/useManualEmails';
 export default function ManualClassifier() {
   const [tab, setTab] = useState('flagged');
   const [selectedLabels, setSelectedLabels] = useState({});
-  const [senderFilter, setSenderFilter] = useState(''); // new filter
+  const [senderFilter, setSenderFilter] = useState('');
   const { emails, loading, error } = useManualEmails(tab);
 
   const labelOptions = [
@@ -42,6 +42,8 @@ export default function ManualClassifier() {
     ? emails.filter(email => email.suggested === 'Suspected Spam')
     : tab === 'reviewed'
     ? emails.filter(email => email.predicted_by && email.suggested !== 'Suspected Spam' && email.suggested !== 'Flagged For Review')
+    : tab === 'local'
+    ? emails.filter(email => email.predicted_by === 'local')
     : emails.filter(email => email.suggested === 'Flagged For Review');
 
   const filteredEmails = senderFilter
@@ -68,6 +70,7 @@ export default function ManualClassifier() {
           <button onClick={() => setTab('flagged')} style={tabBtn(tab === 'flagged')}>Flagged for Review</button>
           <button onClick={() => setTab('suspected')} style={tabBtn(tab === 'suspected')}>Suspected Spam</button>
           <button onClick={() => setTab('reviewed')} style={tabBtn(tab === 'reviewed')}>Reviewed by Classifier</button>
+          <button onClick={() => setTab('local')} style={tabBtn(tab === 'local')}>Local Classifier</button>
         </div>
 
         {allSenders.length > 0 && (
@@ -101,29 +104,36 @@ export default function ManualClassifier() {
               </thead>
               <tbody>
                 {filteredEmails.map(email => (
-                  <tr key={email.id} style={{ borderBottom: '1px solid #4b5563' }}>
-                    <td style={td}>{email.sender}</td>
-                    <td style={td}>{email.subject}</td>
-                    <td style={td}>{email.suggested}</td>
-                    <td style={td}>{(email.confidence * 100).toFixed(1)}%</td>
-                    <td style={td}>
-                      <select
-                        value={selectedLabels[email.id] || ""}
-                        onChange={(e) => handleLabelChange(email.id, e.target.value)}
-                        style={{ padding: '0.25rem', borderRadius: '0.25rem', background: '#111827', color: '#fff' }}
-                      >
-                        <option value="">Choose...</option>
-                        {labelOptions.map(label => (
-                          <option key={label} value={label}>{label}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td style={td}>
-                      <button onClick={() => handleConfirm(email.id)} style={{ padding: '0.25rem 0.75rem', background: '#22c55e', color: '#fff', border: 'none', borderRadius: '0.25rem' }}>
-                        Confirm
-                      </button>
-                    </td>
-                  </tr>
+                  <React.Fragment key={email.id}>
+                    <tr style={{ borderBottom: '1px solid #4b5563' }}>
+                      <td style={td}>{email.sender}</td>
+                      <td style={td}>{email.subject}</td>
+                      <td style={td}>{email.suggested}</td>
+                      <td style={td}>{(email.confidence * 100).toFixed(1)}%</td>
+                      <td style={td}>
+                        <select
+                          value={selectedLabels[email.id] || ""}
+                          onChange={(e) => handleLabelChange(email.id, e.target.value)}
+                          style={{ padding: '0.25rem', borderRadius: '0.25rem', background: '#111827', color: '#fff' }}
+                        >
+                          <option value="">Choose...</option>
+                          {labelOptions.map(label => (
+                            <option key={label} value={label}>{label}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td style={td}>
+                        <button onClick={() => handleConfirm(email.id)} style={{ padding: '0.25rem 0.75rem', background: '#22c55e', color: '#fff', border: 'none', borderRadius: '0.25rem' }}>
+                          Confirm
+                        </button>
+                      </td>
+                    </tr>
+                    <tr>
+                      <td colSpan={6} style={{ ...td, background: '#111827', fontSize: '0.875rem', color: '#d1d5db' }}>
+                        {email.body || <em>No content available.</em>}
+                      </td>
+                    </tr>
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -133,6 +143,9 @@ export default function ManualClassifier() {
                 <div style={{ fontSize: '0.9rem', color: '#9ca3af' }}>{email.sender}</div>
                 <div style={{ fontWeight: 'bold', marginTop: '0.25rem' }}>{email.subject}</div>
                 <div style={{ fontSize: '0.875rem', marginTop: '0.25rem' }}>{email.snippet}</div>
+                <div style={{ fontSize: '0.875rem', marginTop: '0.5rem', color: '#d1d5db' }}>
+                  <strong>Body:</strong> {email.body || <em>No content available.</em>}
+                </div>
                 <div style={{ marginTop: '0.5rem', fontSize: '0.875rem' }}>
                   <strong>Suggested Label:</strong> {email.suggested} | <strong>Confidence:</strong> {(email.confidence * 100).toFixed(1)}%
                 </div>

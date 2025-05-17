@@ -49,14 +49,15 @@ def fetch_emails_since_midnight():
         for email in emails:
             cursor.execute("""
                 INSERT OR IGNORE INTO emails (
-                    id, sender, sender_email, subject,
+                    id, sender, sender_email, subject, body,  
                     received_at, category, predicted_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 email.get("id"),
                 email.get("sender"),
                 email.get("email"),
                 email.get("subject"),
+                email.get("body", ""),  # Add body field
                 email.get("received_at"),
                 email.get("category", "Uncategorized"),
                 email.get("predicted_by", "none")
@@ -217,7 +218,7 @@ def classify_all_in_batches():
 
         while True:
             start_time = time.time()
-            result = classify_email_batch()
+            result = classify_email_batch(db_path)
             end_time = time.time()
 
             if not result:

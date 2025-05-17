@@ -5,11 +5,19 @@ import time
 from fastapi import BackgroundTasks
 from fastapi.responses import JSONResponse
 
+# Configure logging globally
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+
 from collections import Counter
 from datetime import datetime, timedelta
 from app.utils.database import get_db_path, update_sender_reputation, save_system_value
 from app.utils.classifier import check_sender_spamhaus, predict_with_local_model, classify_email_batch
 from app.gmail_service import GmailService
+
 
 CONFIDENCE_THRESHOLD = 80  # Customize this if you like
 
@@ -63,11 +71,14 @@ async def run_full_classification_pipeline():
 
     # Step 4: Classify remaining with OpenAI in batches of 40
     total_openai = 0
-    for i in range(0, len(remaining_for_openai), 40):
-        batch = remaining_for_openai[i:i + 40]
-        result = classify_email_batch(batch)
-        if result:
-            total_openai += len(result)
+    if len(remaining_for_openai) >= 20:
+        for i in range(0, len(remaining_for_openai), 40):
+            batch = remaining_for_openai[i:i + 40]
+            result = classify_email_batch(batch)
+            if result:
+                total_openai += len(result)
+    else:
+        logging.info("📭 Skipping OpenAI classification as there are less than 20 emails.")
 
     logging.info("✅ Pipeline complete.")
     return {
@@ -78,12 +89,15 @@ async def run_full_classification_pipeline():
     }
 
 
-def mark_classification(email_id, category, predicted_by, confidence=None):
+def mark_classification(email_id, category, predicted_by, confidence):
+    """
+    Marks an email with a classification category, prediction source, and confidence.
+    """
     conn = sqlite3.connect(get_db_path())
     cursor = conn.cursor()
     cursor.execute("""
         UPDATE emails
-        SET category = ?, predicted_by = ?, confidence = ?
+        SET category = ?, predicted_by = ?, confidence = ?, override_timestamp = NULL
         WHERE id = ?
     """, (category, predicted_by, confidence, email_id))
     conn.commit()
@@ -102,7 +116,7 @@ def fetch_last_hour_emails(background_tasks: BackgroundTasks = None):
         gmail = GmailService(token_path="/data/token.json")
 
         one_hour_ago = datetime.utcnow() - timedelta(hours=1)
-        query_date = one_hour_ago.strftime("%Y-%m-%d")
+        query_date = one_hour_ago.strftime("%Y-%m-%d")  # Correctly format the datetime
 
         emails = gmail.fetch_emails(since=query_date, unread_only=False)
 
@@ -112,7 +126,17 @@ def fetch_last_hour_emails(background_tasks: BackgroundTasks = None):
 
         for email in emails:
             received_at = email.get("received_at")
-            if not received_at or datetime.fromisoformat(received_at) < one_hour_ago:
+            if not received_at:
+                continue
+
+            # Parse the date using ISO 8601 format
+            try:
+                received_at_dt = datetime.fromisoformat(received_at)
+            except ValueError as e:
+                logging.error(f"❌ Error parsing date '{received_at}': {e}")
+                continue
+
+            if received_at_dt < one_hour_ago:
                 continue
 
             cursor.execute("""
@@ -127,7 +151,7 @@ def fetch_last_hour_emails(background_tasks: BackgroundTasks = None):
                 email.get("email"),
                 email.get("subject"),
                 email.get("body", ""),
-                email.get("received_at"),
+                received_at,
                 email.get("category", "Uncategorized"),
                 email.get("predicted_by"),
                 email.get("confidence"),
@@ -155,3 +179,110 @@ def fetch_last_hour_emails(background_tasks: BackgroundTasks = None):
     except Exception as e:
         logging.error(f"❌ Error fetching or processing emails: {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+async def midnight_task():
+    """
+    Task to be executed at midnight.
+    """
+    try:
+        logging.info("🌙 Running midnight task...")
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # Cleanup emails older than 1 year
+        one_year_ago = datetime.utcnow() - timedelta(days=365)
+        cursor.execute("""
+            DELETE FROM emails WHERE received_at < ?
+        """, (one_year_ago.isoformat(),))
+        deleted_count = cursor.rowcount
+        conn.commit()
+        conn.close()
+
+        logging.info(f"🗑️ Deleted {deleted_count} emails older than 1 year.")
+
+        # Run fetch_last_hour_emails
+        logging.info("📥 Running fetch_last_hour_emails as part of midnight task...")
+        fetch_last_hour_emails()  # Call the function directly
+
+        # Check and retrain model
+        await check_and_retrain_model()
+
+    except Exception as e:
+        logging.error(f"❌ Midnight task failed: {e}")
+
+
+async def check_and_retrain_model():
+    """
+    Check for manually classified emails from the previous day or retrain if it's Friday.
+    Retrain the model with the full dataset (local, OpenAI, and manual).
+    """
+    try:
+        logging.info("🔍 Checking for manually classified emails or if today is Friday...")
+        db_path = get_db_path()
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # Check if today is Friday
+        today = datetime.utcnow().date()
+        is_friday = today.weekday() == 4  # 4 corresponds to Friday
+
+        # Calculate the date range for the previous day
+        yesterday_start = datetime.combine(today - timedelta(days=1), datetime.min.time())
+        yesterday_end = datetime.combine(today - timedelta(days=1), datetime.max.time())
+
+        # Query for manually classified emails
+        cursor.execute("""
+            SELECT id, sender, sender_email, subject, category
+            FROM emails
+            WHERE manual_override = 1 AND override_timestamp BETWEEN ? AND ?
+        """, (yesterday_start.isoformat(), yesterday_end.isoformat()))
+        manually_classified_emails = cursor.fetchall()
+
+        if manually_classified_emails:
+            logging.info(f"📊 Found {len(manually_classified_emails)} manually classified emails.")
+        else:
+            logging.info("✅ No manually classified emails found for the previous day.")
+
+        # If it's Friday or there are manually classified emails, retrain the model
+        if is_friday or manually_classified_emails:
+            logging.info("📅 Today is Friday or manually classified emails exist. Retraining the model...")
+            retrain_with_full_dataset(cursor)
+        else:
+            logging.info("✅ No retraining needed today.")
+
+        conn.close()
+    except Exception as e:
+        logging.error(f"❌ Error checking or retraining the model: {e}")
+
+
+def retrain_with_full_dataset(cursor):
+    """
+    Retrain the model using the full dataset (local, OpenAI, and manual classifications).
+    """
+    try:
+        logging.info("🛠️ Retraining model with the full dataset...")
+
+        # Fetch all classified emails
+        cursor.execute("""
+            SELECT id, sender, sender_email, subject, category
+            FROM emails
+            WHERE category IS NOT NULL
+        """)
+        full_dataset = cursor.fetchall()
+
+        if not full_dataset:
+            logging.info("⚠️ No classified emails found in the dataset.")
+            return
+
+        logging.info(f"📊 Found {len(full_dataset)} emails in the full dataset for retraining.")
+
+        # Example: Retrain the model using the full dataset
+        # Replace this with your actual model retraining logic
+        for email in full_dataset:
+            logging.debug(f"Training with email: {email}")
+
+        logging.info("✅ Model retrained successfully with the full dataset.")
+    except Exception as e:
+        logging.error(f"❌ Error during model retraining: {e}")

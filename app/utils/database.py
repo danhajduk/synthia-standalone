@@ -112,18 +112,24 @@ def update_sender_reputation(sender_email, sender_name, classification):
         conn = sqlite3.connect(get_db_path())
         cursor = conn.cursor()
 
-        # Retrieve existing counts
-        cursor.execute("SELECT classification_counts FROM sender_reputation WHERE sender_email = ?", (sender_email,))
+        # Retrieve existing counts and manual override flag
+        cursor.execute("""
+            SELECT classification_counts, manual_override
+            FROM sender_reputation
+            WHERE sender_email = ?
+        """, (sender_email,))
         row = cursor.fetchone()
         now = datetime.utcnow().isoformat()
 
         if row:
             counts = json.loads(row[0])
             counts[classification] = counts.get(classification, 0) + 1
+            manual_override = bool(row[1])
         else:
             counts = {classification: 1}
+            manual_override = False
 
-        score = calculate_reputation_score(counts)
+        score = calculate_reputation_score(counts, manual_override)
         state = determine_reputation_state(score)
 
         if row:
@@ -161,9 +167,10 @@ def update_sender_reputation(sender_email, sender_name, classification):
     except Exception as e:
         print(f"⚠️ Error updating sender reputation for {sender_email}: {e}")
 
-def calculate_reputation_score(counts: dict) -> float:
+def calculate_reputation_score(counts: dict, manual_override: bool = False) -> float:
     """
     Computes a sender reputation score based on classification counts.
+    Adds extra weight if the classification has been manually overridden.
     """
     positive_labels = {"Important", "Work", "Personal", "Receipts"}
     negative_labels = {"Phishing", "Confirmed Spam", "Suspected Spam", "Blacklisted"}
@@ -172,8 +179,16 @@ def calculate_reputation_score(counts: dict) -> float:
     if total == 0:
         return 0.0
 
-    positives = sum(counts.get(label, 0) for label in positive_labels)
-    negatives = sum(counts.get(label, 0) for label in negative_labels)
+    override_multiplier = 1.5 if manual_override else 1.0
+
+    positives = sum(
+        counts.get(label, 0) * (2 if label == "Important" else 1) * override_multiplier
+        for label in positive_labels
+    )
+    negatives = sum(
+        counts.get(label, 0) * (3 if label in {"Blacklisted", "Confirmed Spam"} else 1) * override_multiplier
+        for label in negative_labels
+    )
 
     raw_score = (positives - negatives) / total
     normalized = max(0.0, min(1.0, (raw_score + 1) / 2))

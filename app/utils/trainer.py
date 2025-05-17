@@ -38,9 +38,10 @@ def combine_features(sender, email, subject):
     """
     return f"{sender} <{email}> - {subject}"
 
-def train_local_classifier(source="manual"):
+def train_local_classifier(source="manual", manual_weight=2):
     """
     Train a local MultinomialNB model and evaluate on a hold-out test set.
+    Gives more weight to manual classifications by duplicating their samples.
     Saves model metrics in the `system` table.
     """
     logging.info(f"📚 Training local classifier on {source} labels...")
@@ -50,8 +51,17 @@ def train_local_classifier(source="manual"):
         logging.warning("⚠️ No training data available.")
         return False
 
-    texts = [combine_features(sender, email, subject) for sender, email, subject, _ in rows]
-    labels = [category for _, _, _, category in rows]
+    texts = []
+    labels = []
+
+    for sender, email, subject, category in rows:
+        feature = combine_features(sender, email, subject)
+        texts.append(feature)
+        labels.append(category)
+        # Add additional weight for manual classifications
+        if source == "manual":
+            texts.extend([feature] * (manual_weight - 1))
+            labels.extend([category] * (manual_weight - 1))
 
     # Split into train/test
     X_train, X_test, y_train, y_test = train_test_split(texts, labels, test_size=0.1, random_state=42)

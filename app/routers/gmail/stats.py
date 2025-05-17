@@ -1,4 +1,3 @@
-
 # Standard library imports
 import sqlite3
 import logging
@@ -35,13 +34,21 @@ def get_email_stats():
         """)
         unclassified = cursor.fetchone()[0]
 
-        # Last pre-classify time (based on latest local prediction)
+        # Last pre-classify time (based on system table value)
         cursor.execute("""
-            SELECT MAX(override_timestamp)
-            FROM emails
-            WHERE predicted_by = 'local'
+            SELECT value
+            FROM system
+            WHERE key = 'local_model_last_prediction'
         """)
-        last_preclassify = cursor.fetchone()[0]
+        row = cursor.fetchone()
+        last_preclassify = None
+        if row:
+            try:
+                value = json.loads(row[0])  # Ensure it's valid JSON
+                if isinstance(value, dict):  # Ensure it's a dictionary
+                    last_preclassify = value.get("timestamp")
+            except json.JSONDecodeError:
+                logging.error("❌ Failed to parse 'local_model_last_prediction' as JSON.")
 
         # Last trained model timestamp from system table
         cursor.execute("""
@@ -53,13 +60,16 @@ def get_email_stats():
         last_trained = None
         if row:
             try:
-                value = json.loads(row[0])
-                last_trained = value.get("timestamp")
+                value = json.loads(row[0])  # Ensure it's valid JSON
+                if isinstance(value, dict):  # Ensure it's a dictionary
+                    last_trained = value.get("timestamp")
             except json.JSONDecodeError:
-                pass
+                logging.error("❌ Failed to parse 'local_model_evaluation' as JSON.")
 
         conn.close()
-
+        
+        logging.info(f"📊 Email stats: total={total}, unclassified={unclassified}, last_preclassify={last_preclassify}, last_trained={last_trained}")
+        
         return JSONResponse({
             "total": total,
             "unclassified": unclassified,

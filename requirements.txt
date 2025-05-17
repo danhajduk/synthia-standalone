@@ -9,3 +9,4 @@ pytz
 dnspython>=2.4.2
 scikit-learn
 joblib
+requests
