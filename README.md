@@ -1,112 +1,104 @@
-# Synthia Standalone
+# 🧠 Synthia Standalone
 
-Synthia Standalone is a self-hosted AI-powered assistant that integrates Gmail classification, sender reputation tracking, OpenAI analysis, and a friendly web UI. Designed for local deployments using Docker.
-
----
-
-## 🔧 Features
-
-### ✉️ Gmail Integration
-
-* Fetch and store emails (unread or all) from your Gmail account
-* Parse sender, subject, and metadata
-* Display and manage stored emails via web UI
-
-### 🧠 AI Email Classifier
-
-* Classifies emails into:
-
-  * `Important`
-  * `Data`
-  * `Regular`
-  * `Suspected Spam`
-  * `Uncategorized`
-* Uses OpenAI Assistants API with batch processing
-* Avoids sending spammy emails to the AI using DNS-based reputation checks (Spamhaus)
-
-### 🛀 Maintenance Tools
-
-* Wipe email/reputation tables
-* Fetch emails from the past 14 days
-* Manually reclassify all uncategorized emails in batches
-* Backup and restore email data
-
-### 📊 Sender Reputation Tracking
-
-* Tracks frequency and type of classification per sender
-* Plans for half-life based scoring system (coming soon)
-* Manual override support
-
-### 💥 Web Interface
-
-* Clean, fast, local UI built on FastAPI
-* Tabs for Gmail, AI interactions, settings & debug tools
-* Live watchdog status, unread counters, email browser
+**Synthia Standalone** is a full-stack AI assistant for intelligent Gmail classification and analysis. It combines a FastAPI backend with a modern React frontend to help you review, classify, and manage your inbox using local machine learning and OpenAI.
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Features
 
-### Prerequisites
+### ✉️ Gmail Email Classification
 
-* Docker
-* OpenAI API Key
-* Gmail OAuth token (stored in `/data/token.json`)
+* Automatically fetch and categorize emails
+* Use local ML (Multinomial Naive Bayes) for high-speed predictions
+* Delegate uncertain or complex cases to OpenAI
+* Manually override and reclassify emails
 
-### Clone and Run
+### 🤖 AI Integration
 
-```bash
-git clone https://github.com/danhajduk/synthia-standalone.git
-cd synthia-standalone
-./deploy.sh
+* OpenAI-powered classification for edge cases
+* Human-in-the-loop labeling
+* Reputation-based trust scoring per sender
+* Confidence tracking and active learning
+
+### 🧑‍💻 Web UI (React)
+
+* Responsive, modern React dashboard
+* Email filters, labels, and confidence indicators
+* Manual correction tools and batch logs
+* Settings and system maintenance controls
+
+---
+
+## 🗂️ Project Structure
+
 ```
-
-Then visit [http://localhost:5010](http://localhost:5010)
-
----
-
-## 📂 Project Structure
-
-```text
-/app
-👉️ main.py                # FastAPI entrypoint
-👉️ gmail_service.py       # Gmail API interface
-👉️ utils/
-   👉️ database.py        # DB schema and helpers
-   👉️ classifier.py      # AI + Spamhaus logic
-👉️ routers/
-   👉️ gmail.py           # Gmail routes
-   👉️ openai_routes.py   # AI routes
-   👉️ system.py          # Health and utility
-👉️ static/                # Frontend assets
-   👉️ index.html
-   👉️ script.js
-   👉️ pages/
+.
+├── backend/
+│   ├── app/
+│   │   ├── routers/         # FastAPI route handlers
+│   │   ├── utils/           # Helper functions and models
+│   │   ├── main.py          # FastAPI entry point
+│   │   ├── database.py      # SQLite connection
+│   │   ├── classifier.py    # ML and OpenAI pipeline
+├── frontend/
+│   ├── src/
+│   │   ├── components/      # React UI elements
+│   │   ├── pages/           # Views: Inbox, Classifier, Settings
+│   │   ├── hooks/           # Data fetching logic
+├── data/                    # SQLite database
+├── run.sh                   # Launcher script
+└── todo.md                  # Project roadmap and tasks
 ```
 
 ---
 
-## 🧪 Debug Tools
+## 🧪 Workflow
 
-Located under the `Settings → Debug` section:
-
-* Fetch 14 days of email history
-* Batch reclassify any uncategorized emails
-* Backup/restore `emails` table
-* View system status (watchdog)
+1. Fetch new emails (manual or scheduled)
+2. Classify using local model (if confident)
+3. Route low-confidence messages to OpenAI
+4. Display results in UI with confidence tags
+5. Let the user reclassify, fix, or approve
+6. Use new labels to retrain and improve model
 
 ---
 
-## 🛡 Privacy
+## 📅 Roadmap Highlights
 
-All data remains local — your emails and OpenAI prompts are processed privately inside your own Docker container. No analytics or external telemetry.
+> From `todo.md`
+
+### 🔄 Classification Engine
+
+* Local + OpenAI hybrid classification
+* Manual labeling and confidence scoring
+* Active learning loop and retraining pipeline
+
+### 🧠 Sender Reputation
+
+* Dynamic trust score per sender
+* Override system and DBL blacklist integration
+* Feed reputation into classification model
+
+### 📊 UI Improvements
+
+* Label legends, color badges, filters
+* Backlog alerts and sort by confidence
+* Inline editing of email tags
+
+### 🛠️ Maintenance
+
+* Clear state, run batch steps manually
+* Auto-clean aged emails
+* Backup/restore database
+
+---
+
+## 🧑‍💻 Contributing
+
+Contributions welcome! Check `todo.md` for ideas or submit a pull request to help expand features, improve classification accuracy, or enhance the UI.
 
 ---
 
 ## 📄 License
 
-MIT
-
----
-
-> Made with ❤️ by Dan Hajduk
+MIT License – see [`LICENSE`](LICENSE)
