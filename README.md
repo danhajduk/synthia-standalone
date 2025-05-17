@@ -1,6 +1,6 @@
 # 🧠 Synthia Standalone
 
-**Synthia Standalone** is a full-stack AI assistant for intelligent Gmail classification and analysis. It combines a FastAPI backend with a modern React frontend to help you review, classify, and manage your inbox using local machine learning and OpenAI.
+**Synthia Standalone** is a full-stack AI assistant for managing Gmail, calendars, and interacting with a powerful AI assistant. It combines a FastAPI backend with a modern React frontend to help you intelligently manage your inbox, organize your schedule, and interact with OpenAI. More assistant capabilities will be added in the future.
 
 ---
 
