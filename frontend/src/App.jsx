@@ -1,12 +1,11 @@
 import React from 'react';
 import Sidebar from './components/Sidebar';
-import Header from './components/Header';
 import SynthiaAvatar from './components/SynthiaAvatar';
 import SummaryCard from './components/SummaryCard';
 import { useApiFetch } from './hooks/useApiFetch';
 import Classifier from './pages/Classifier'; // make sure you create this file
 import { Routes, Route, useNavigate } from 'react-router-dom';
-
+import HeaderWrapper from './components/HeaderWrapper';
 
 
 function GmailClassifierCard({ stats, loading, error, navigate }) {
@@ -64,7 +63,7 @@ function App() {
       <main style={{ flex: 1, padding: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
           <SynthiaAvatar />
-          <Header />
+          <HeaderWrapper />
         </div>
 
         <div style={{

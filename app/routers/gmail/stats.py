@@ -68,7 +68,7 @@ def get_email_stats():
 
         conn.close()
         
-        logging.info(f"📊 Email stats: total={total}, unclassified={unclassified}, last_preclassify={last_preclassify}, last_trained={last_trained}")
+        logging.debug(f"📊 Email stats: total={total}, unclassified={unclassified}, last_preclassify={last_preclassify}, last_trained={last_trained}")
         
         return JSONResponse({
             "total": total,

@@ -8,12 +8,12 @@ import ClassifierControls from '../components/ClassifierControls';
 import ClassifierFetchControls from '../components/ClassifierFetchControls';
 import { useApiFetch } from '../hooks/useApiFetch';
 import { useBadgeStats } from '../hooks/useBadgeStats';
+import HeaderWrapper  from '../components/ClassifierWrapper';
 
 
 export default function Classifier() {
   const { data: metricsJson, loading: class_loading, error: class_error } = useApiFetch('/model/metrics');
-  // const { data: stats, loading: stats_loading, error: stats_error } = useApiFetch('/api/gmail/stats');
-const { data, loading, error, refresh } = useBadgeStats();
+  const { data, loading, error, refresh } = useBadgeStats();
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -21,11 +21,8 @@ const { data, loading, error, refresh } = useBadgeStats();
       <main style={{ flex: 1, padding: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
           <SynthiaAvatar />
-          <Header />
+          <HeaderWrapper/>
         </div>
-
-        <ClassifierBadges data={data} loading={loading} error={error} />
-
         <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
           <div style={{ flex: 1 }}>
           <ModelMetricsTable data={metricsJson || {}} />
@@ -37,9 +34,6 @@ const { data, loading, error, refresh } = useBadgeStats();
 
         <ClassifierFetchControls />
 
-        <footer style={{ marginTop: '3rem', fontSize: '0.875rem', color: '#9ca3af' }}>
-          Synthia v1.0.0
-        </footer>
       </main>
     </div>
   );

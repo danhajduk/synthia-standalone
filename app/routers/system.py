@@ -20,7 +20,7 @@ def hello():
     A simple endpoint to test the API.
     Returns a greeting message.
     """
-    return JSONResponse({"message": "Hello from FastAPI!"})
+    return JSONResponse({"backend": "ok"})
 
 @router.post("/api/clear_all_tables")
 def clear_all_tables():

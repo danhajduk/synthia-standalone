@@ -3,6 +3,7 @@ import App from './App';
 import Classifier from './pages/Classifier';
 import ManualClassifier from './pages/ManualClassifier';
 import Reputation from './pages/Reputation';
+import Settings from './pages/Settings';
 
 export default function Router() {
   return (
@@ -11,6 +12,7 @@ export default function Router() {
       <Route path="/classifier" element={<Classifier />} />
       <Route path="/classifier/manual-classifier" element={<ManualClassifier />} />
       <Route path="/classifier/reputation" element={<Reputation />} />
+      <Route path="/settings" element={<Settings />} />
     </Routes>
   );
 }

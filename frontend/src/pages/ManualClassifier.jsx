@@ -167,9 +167,6 @@ export default function ManualClassifier() {
           )}
         </div>
 
-        <footer style={{ marginTop: '3rem', fontSize: '0.875rem', color: '#9ca3af' }}>
-          Synthia v1.0.0
-        </footer>
       </main>
     </div>
   );
