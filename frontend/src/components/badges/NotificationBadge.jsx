@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import BaseBadge from './BaseBadge';
 
 export default function NotificationBadge({
   label = 'Alerts',
@@ -32,20 +33,14 @@ export default function NotificationBadge({
   }, [endpoint, countKey, pollingInterval, label]);
 
   return (
-    <div
-      title={label}
-      className={`flex items-center justify-between px-3 py-1 rounded-md text-gray-900 text-sm font-medium ${className}`}
-      style={{
-        backgroundColor: '#f59e0b', // amber-500
-        borderRadius: '0.5rem',
-        minHeight: '2rem',
-        overflow: 'hidden',
-        width: fullWidth ? '100%' : 'auto',
-        marginBottom: '0.5rem'  // 👈 Add margin between badges
-      }}
-    >
-      <span>{icon}</span>
-      <span className="flex-1 text-left">{`${label}${count > 0 ? `: ${count}` : ''}`}</span>
-    </div>
+    <BaseBadge
+    icon={icon}
+    label={label}
+    value={`${label}${count > 0 ? `: ${count}` : ''}`}
+    backgroundColor="#f59e0b"
+    fullWidth={fullWidth}
+    className={className}
+    tooltip={label}
+  />
   );
 }

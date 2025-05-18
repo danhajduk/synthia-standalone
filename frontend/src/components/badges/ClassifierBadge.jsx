@@ -1,5 +1,6 @@
 // File: src/components/badges/ClassifierBadge.jsx
 import React, { useEffect, useState } from 'react';
+import BaseBadge from './BaseBadge';
 
 export default function ClassifierBadge({
   label = 'Model',
@@ -13,13 +14,19 @@ export default function ClassifierBadge({
 }) {
   const [status, setStatus] = useState(value || 'unknown');
 
+  const trimValue = (str) => (str ? str.toString().substring(0, 10) : 'unknown');
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
-    return isNaN(date) ? dateString : date.toLocaleDateString();
+    const formattedDate = isNaN(date) ? dateString : date.toLocaleDateString();
+    return trimValue(formattedDate);
   };
 
   useEffect(() => {
-    if (value || !endpoint) return;
+    if (value || !endpoint) {
+      setStatus(trimValue(value || 'unknown')); // Trim the "value" variable
+      return;
+    }
 
     const fetchStatus = async () => {
       try {
@@ -39,22 +46,14 @@ export default function ClassifierBadge({
   }, [value, endpoint, statusKey, pollingInterval]);
 
   return (
-    <div
-      title={label}
-      className={`flex items-center justify-between px-3 py-1 rounded-md text-gray-900 text-sm font-medium ${className}`}
-      style={{
-        backgroundColor: '#a78bfa', // violet-400
-        borderRadius: '0.5rem',
-        minHeight: '2rem',
-        overflow: 'hidden',
-        width: fullWidth ? '100%' : 'auto',
-        marginBottom: '0.5rem'
-      }}
-    >
-      <span>{icon}</span>
-      <span className="flex-1 text-left">
-        {label}: {status}
-      </span>
-    </div>
+    <BaseBadge
+      icon={icon}
+      label={label}
+      value={`${label}: ${status}`}
+      backgroundColor="#a78bfa"
+      fullWidth={fullWidth}
+      className={className}
+      tooltip={label}
+    />
   );
 }

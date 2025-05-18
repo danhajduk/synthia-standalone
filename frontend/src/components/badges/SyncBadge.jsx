@@ -1,5 +1,6 @@
 // File: src/components/badges/SyncBadge.jsx
 import React, { useEffect, useState } from 'react';
+import BaseBadge from './BaseBadge';
 
 export default function SyncBadge({
   label = 'Synced',
@@ -33,7 +34,7 @@ export default function SyncBadge({
   }, [value, endpoint, timestampKey, pollingInterval]);
 
   const getRelativeTime = (date) => {
-    if (!date) return 'never';
+    if (!date || isNaN(date.getTime())) return 'never'; // Handle invalid dates
     const diff = Math.floor((Date.now() - date.getTime()) / 1000);
     if (diff < 60) return `${diff}s ago`;
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
@@ -42,22 +43,14 @@ export default function SyncBadge({
   };
 
   return (
-    <div
-      title={label}
-      className={`flex items-center justify-between px-3 py-1 rounded-md text-gray-900 text-sm font-medium ${className}`}
-      style={{
-        backgroundColor: '#f59e0b', // amber-500
-        borderRadius: '0.5rem',
-        minHeight: '2rem',
-        overflow: 'hidden',
-        width: fullWidth ? '100%' : 'auto',
-        marginBottom: '0.5rem'
-      }}
-    >   
-      <span>{icon}</span>
-      <span className="flex-1 text-left">
-        {label}: {lastSynced ? getRelativeTime(lastSynced) : '...'}
-      </span>
-    </div>
+    <BaseBadge
+    icon={icon}
+    label={label}
+    value={`${label}: ${lastSynced ? getRelativeTime(lastSynced) : 'never'}`}
+    backgroundColor="#f59e0b"
+    fullWidth={fullWidth}
+    className={className}
+    tooltip={label}
+  />
   );
 }

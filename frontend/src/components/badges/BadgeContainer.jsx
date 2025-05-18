@@ -1,21 +1,43 @@
-// components/Badges/BadgeContainer.jsx
+// File: src/components/badges/BadgeContainer.jsx
 import React from 'react';
-import StatusBadge from './StatusBadge';
-import ModuleBadge from './ModuleBadge';
-import UnreadBadge from './UnreadBadge';
+import { badgeRegistry } from './badgeRegistry';
 
-const badgeMap = {
-  status: StatusBadge,
-  module: ModuleBadge,
-  unread: UnreadBadge
-};
+export default function BadgeContainer({
+  badges = [],
+  direction = 'horizontal',
+  align = 'center',
+  wrap = false,
+  className = ''
+}) {
+  const isVertical = direction === 'vertical';
+  const alignItems = {
+    start: 'items-start',
+    center: 'items-center',
+    end: 'items-end'
+  }[align] || 'items-center';
 
-export default function BadgeContainer({ badges = [] }) {
   return (
-    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+    <div
+      className={`
+        flex
+        ${isVertical ? 'flex-col space-y-2' : `flex-row gap-2 ${wrap ? 'flex-wrap' : ''}`}
+        ${alignItems}
+        ${className}
+      `}
+    >
       {badges.map((badge, idx) => {
-        const BadgeComponent = badgeMap[badge.type];
-        if (!BadgeComponent) return null;
+        const BadgeComponent = badgeRegistry[badge.type];
+        if (!BadgeComponent) {
+          console.warn(`⚠️ Unknown badge type: '${badge.type}'`);
+          return (
+            <div
+              key={`unknown-${idx}`}
+              className="px-3 py-1 text-sm text-white bg-gray-400 rounded-md"
+            >
+              Unknown: {badge.type}
+            </div>
+          );
+        }
         return <BadgeComponent key={idx} {...badge.props} />;
       })}
     </div>

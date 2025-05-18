@@ -15,7 +15,7 @@
     COPY app/ ./app/
     COPY models/ ./models/
     COPY requirements.txt .
-
+    COPY ./run_dev.sh ./
 
     # Copy frontend build output from previous stage
     COPY --from=frontend /app/frontend/dist ./frontend/dist

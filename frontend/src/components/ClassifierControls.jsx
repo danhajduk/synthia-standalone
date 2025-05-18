@@ -1,67 +1,129 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStatusAndRefresh } from '../hooks/useStatusAndRefresh';
-import SynthiaButton from '../components/SynthiaButton';
+import ButtonContainer from './buttons/ButtonContainer';
 
-export default function ClassifierControls({ onBadgeUpdate }) {
+export default function ClassifierControls({ onBadgeUpdate, onRetrainSuccess }) {
   const [threshold, setThreshold] = useState(0.5);
   const navigate = useNavigate();
   const { trigger, loading } = useStatusAndRefresh();
 
-  const localButtons = [
-    { type: 'action', label: "Retrain Model", icon: "🧠", onClick: () => console.log("Retrain Model") },
-    { type: 'action', label: "Re-evaluate Now", icon: "🔁", onClick: () => console.log("Re-evaluate Now") },
-    { type: 'action', label: "Export Report", icon: "📄", onClick: () => console.log("Export Report") },
-    { type: 'action', label: "Reset Threshold", icon: "🎯", onClick: () => setThreshold(0.5) },
-    { type: 'action', label: "Clear DB Labels", icon: "🗑️", onClick: () => console.log("Clear DB Labels") },
-    { type: 'action', label: "Sync with Gmail", icon: "🔄", onClick: () => console.log("Sync with Gmail") },
-    { type: 'link', label: "Manual Classification", icon: "📝", to: "/classifier/manual-classifier" },
-    { type: 'link', label: "Sender Reputation", icon: "📊", to: "/classifier/reputation" }
-  ];
-
-  const remoteButtons = [
+  const buttons = (setThreshold) => [
     {
-      type: 'loading',
-      label: "Classify One Batch",
-      loadingLabel: "Classifying...",
-      icon: "🔬",
-      endpoint: "/api/gmail/debug/classify-one-batch",
-      method: "GET",
-      onSuccess: onBadgeUpdate
+      type: 'fetch',
+      props: {
+        label: 'Train Model',
+        loadingLabel: 'Training...',
+        icon: '📥',
+        endpoint: '/api/gmail/reputation/train',
+        method: 'POST',
+        fullWidth: true
+      }
     },
     {
-      type: 'loading',
-      label: "Classify All",
-      loadingLabel: "Classifying...",
-      icon: "🧪",
-      endpoint: "/api/gmail/debug/classify-all",
-      method: "GET",
-      onSuccess: onBadgeUpdate
+      type: 'action',
+      props: {
+        label: 'Re-evaluate Now',
+        icon: '🔁',
+        onClick: () => console.log('Re-evaluate Now'),
+        fullWidth: true
+      }
+    },
+    {
+      type: 'action',
+      props: {
+        label: 'Reset Threshold',
+        icon: '🎯',
+        onClick: () => setThreshold(0.5),
+        fullWidth: true
+      }
+    },
+    {
+      type: 'action',
+      props: {
+        label: 'Clear DB Labels',
+        icon: '🗑️',
+        onClick: () => console.log('Clear DB Labels'),
+        fullWidth: true
+      }
+    },
+    {
+      type: 'action',
+      props: {
+        label: 'Sync with Gmail',
+        icon: '🔄',
+        onClick: () => console.log('Sync with Gmail'),
+        fullWidth: true
+      }
+    },
+    {
+      type: 'link',
+      props: {
+        label: 'Manual Classification',
+        icon: '📝',
+        navigateTo: '/classifier/manual-classifier',
+        fullWidth: true
+      }
+    },
+    {
+      type: 'link',
+      props: {
+        label: 'Sender Reputation',
+        icon: '📊',
+        navigateTo: '/classifier/reputation',
+        fullWidth: true
+      }
+    },
+    {
+      type: 'link',
+      props: {
+        label: 'Sender Reputation',
+        icon: '📊',
+        navigateTo: '/classifier/reputation',
+        fullWidth: true
+      }
     }
   ];
-
+  
+  const remoteButtons = [
+    {
+      type: 'fetch',
+      props: {
+        label: "Classify One Batch",
+        loadingLabel: "Classifying...",
+        icon: "🔬",
+        endpoint: "/api/gmail/debug/classify-one-batch",
+        method: "GET",
+        onSuccess: onBadgeUpdate,
+        fullWidth: true
+      }
+    },
+    {
+      type: 'fetch',
+      props: {
+        label: "Classify All",
+        loadingLabel: "Classifying...",
+        icon: "🧪",
+        endpoint: "/api/gmail/debug/classify-all",
+        method: "GET",
+        onSuccess: onBadgeUpdate,
+        fullWidth: true
+      }
+    }
+  ];
+  
   return (
-    <div style={{ minWidth: '220px', marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div style={{ minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       
       {/* 🧠 Local Model Controls */}
-      <div>
-        <h3 style={{ marginBottom: '1rem' }}>Classifier Controls</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {localButtons.map((btn, idx) => (
-            <SynthiaButton
-              key={idx}
-              type={btn.type}
-              label={btn.label}
-              icon={btn.icon}
-              navigateTo={btn.to}
-              onClick={btn.onClick}
-              style={{ background: '#4b5563' }}
-            />
-          ))}
-        </div>
 
         <div>
-          <label style={{ color: '#e5e7eb', fontSize: '0.875rem' }}>Model Threshold:</label>
+        <h3 style={{ marginBottom: '0rem' }}>Model Threshold:</h3>
+          <ButtonContainer
+            direction="vertical"
+            align="start"
+            buttons={buttons(setThreshold)}
+          />
           <input
             type="number"
             min="0"
@@ -80,27 +142,16 @@ export default function ClassifierControls({ onBadgeUpdate }) {
             }}
           />
         </div>
-      </div>
 
       {/* ☁️ Remote AI Classification */}
       <div>
         <h3 style={{ marginBottom: '1rem' }}>Remote Classification</h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-          {remoteButtons.map((btn, idx) => (
-            <SynthiaButton
-              key={idx}
-              type="loading"
-              label={btn.label}
-              loadingLabel={btn.loadingLabel}
-              icon={btn.icon}
-              endpoint={btn.endpoint}
-              method={btn.method}
-              disabled={loading}
-              onSuccess={btn.onSuccess}
-              onError={(err) => alert(`❌ ${err.message}`)}
-              style={{ background: '#6b21a8' }}
-            />
-          ))}
+        <ButtonContainer
+          direction="vertical"
+          align="start"
+          buttons={remoteButtons}
+        />
         </div>
       </div>
     </div>

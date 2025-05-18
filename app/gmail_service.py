@@ -23,6 +23,30 @@ class GmailService:
         )
         self.service = build("gmail", "v1", credentials=self.creds)
 
+    def get_unread_email_count(self) -> int:
+        """
+        Returns the actual number of unread emails by paginating through all results.
+        """
+        total = 0
+        page_token = None
+
+        while True:
+            response = self.service.users().messages().list(
+                userId="me",
+                q="is:unread in:anywhere",
+                pageToken=page_token,
+                maxResults=500
+            ).execute()
+
+            messages = response.get("messages", [])
+            total += len(messages)
+
+            page_token = response.get("nextPageToken")
+            if not page_token:
+                break
+
+        return total
+
     def fetch_emails(self, since: str = None, unread_only: bool = False, max_results: int = 100):
         """
         Fetches emails from the Gmail API based on the provided filters.
@@ -81,12 +105,26 @@ class GmailService:
 
         # Parse email metadata
         email_data = []
+
+        # # Print the first email record (if available) before parsing
+        # if messages:
+        #     first_msg_id = messages[0]['id']
+        #     try:
+        #         first_msg_data = self.service.users().messages().get(
+        #             userId='me', id=first_msg_id,
+        #             format='full',
+        #             metadataHeaders=['From', 'Subject']
+        #         ).execute()
+        #         logging.info(f"🔍 First email record before parsing: {first_msg_data}")
+        #     except Exception as e:
+        #         logging.warning(f"⚠️ Failed to fetch first message {first_msg_id}: {e}")
+
         logging.info(f"📬 Parsing {len(messages)} messages...")
         for idx, msg in enumerate(messages, 1):
             try:
                 msg_data = self.service.users().messages().get(
                     userId='me', id=msg['id'],
-                    format='metadata',
+                    format='full',
                     metadataHeaders=['From', 'Subject']
                 ).execute()
 
@@ -94,28 +132,27 @@ class GmailService:
                 sender_raw = headers.get('From', 'Unknown')
                 subject = headers.get('Subject', '(No Subject)')
 
-                logging.debug(f"🧪 Raw From header: {sender_raw}")
                 sender_name, sender_email = parseaddr(sender_raw)
                 if not sender_name:
                     sender_name = sender_email
 
-                logging.debug(f"✅ Parsed email: {sender_name} <{sender_email}> | {subject}")
-
                 timestamp = int(msg_data.get("internalDate", 0)) / 1000
                 received_at = datetime.utcfromtimestamp(timestamp).isoformat()
+
+                body = msg_data.get("snippet", "")  # Use snippet as body
 
                 email_data.append({
                     "id": msg['id'],
                     "sender": sender_name,
                     "email": sender_email,
                     "subject": subject,
+                    "body": body,
                     "received_at": received_at
                 })
 
             except Exception as e:
                 logging.warning(f"⚠️ Failed to parse message {msg.get('id')}: {e}")
 
-            # Progress log every 100 messages
             if idx % 100 == 0 or idx == len(messages):
                 logging.info(f"📦 Parsed {idx}/{len(messages)} messages ({(idx / len(messages)) * 100:.1f}%)...")
         logging.info(f"📬 Total parsed emails: {len(email_data)}")

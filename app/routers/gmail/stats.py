@@ -7,7 +7,7 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
 # Application-specific imports
-from app.utils.database import get_db_path
+from app.utils.database import get_db_path, get_system_value
 
 # Initialize router
 router = APIRouter()
@@ -69,13 +69,14 @@ def get_email_stats():
         conn.close()
         
         logging.debug(f"📊 Email stats: total={total}, unclassified={unclassified}, last_preclassify={last_preclassify}, last_trained={last_trained}")
-        
+        count = get_system_value("unread_email_count")  # Update unread email count if needed
         return JSONResponse({
             "total": total,
             "unclassified": unclassified,
-            "unread": 14,  # TODO: Replace with real sync value
+            "unread": count,  
             "last_preclassify": last_preclassify,
-            "last_trained": last_trained
+            "last_trained": last_trained,
+            "model": get_system_value("local_model")
         })
 
     except Exception as e:

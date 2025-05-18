@@ -1,15 +1,22 @@
 import React from 'react';
+import ClassifierFetchControls from './ClassifierFetchControls';
 
 export default function ModelMetricsTable({ data }) {
-  if (!data || !data.report) return <p>Loading metrics...</p>;
+  if (!data) {
+    console.error("Data is undefined or null");
+    return <p>Loading metrics...</p>;
+  }
+
+  if (!data.report) {
+    console.error("Data.report is undefined or null");
+    return <p>Loading metrics...</p>;
+  }
 
   const classNames = Object.keys(data.report).filter(key => !['accuracy', 'macro avg', 'weighted avg'].includes(key));
 
   return (
-    <div style={{ overflowX: 'auto', width: '100%' }}>
-      <h3 style={{ marginBottom: '1rem' }}>Model Metrics</h3>
-      <p><strong>Train Size:</strong> {data.train_size} | <strong>Test Size:</strong> {data.test_size} | <strong>Accuracy:</strong> {(data.accuracy * 100).toFixed(2)}%</p>
-      <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '1rem' }}>
+    <div style={{ overflowX: 'auto', width: '100%', marginTop: '2.5em' }}>  
+      <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '1rem' }}>
         <thead>
           <tr>
             <th style={thStyle}>Label</th>
@@ -41,6 +48,7 @@ export default function ModelMetricsTable({ data }) {
         <p><strong>F1-score:</strong> Harmonic mean of precision and recall.</p>
         <p><strong>Support:</strong> Number of test samples of the given class.</p>
       </div> */}
+      <ClassifierFetchControls />
     </div>
   );
 }

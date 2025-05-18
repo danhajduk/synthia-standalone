@@ -1,37 +1,31 @@
 import { useEffect, useState, useCallback } from 'react';
 
+// hooks/useApiFetch.js
 export function useApiFetch(url) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    let cancelled = false;
-
+  const fetchData = useCallback(() => {
+    setLoading(true);
     fetch(url)
       .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
       .then(json => {
-        if (!cancelled) {
-          setData(json);
-          setLoading(false);
-        }
+        setData(json);
+        setError(null);
       })
-      .catch(err => {
-        if (!cancelled) {
-          setError(err);
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
+      .catch(err => setError(err))
+      .finally(() => setLoading(false));
   }, [url]);
 
-  return { data, loading, error };
+  useEffect(() => {
+    fetchData(); // on mount
+  }, [fetchData]);
+
+  return { data, loading, error, refresh: fetchData };
 }
 
 export function useBadgeStats(url) {

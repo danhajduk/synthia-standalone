@@ -10,10 +10,11 @@ import asyncio
 from datetime import datetime, timedelta
 
 from app.routers import gmail, openai_routes, system
-from app.utils.database import initialize_database, get_db_path
+from app.utils.database import initialize_database, get_db_path, save_system_value
 from app.utils.automations import fetch_last_hour_emails, midnight_task, check_and_retrain_model
 from app.routers.gmail.reputation import recalculate_all_sender_reputations
 
+from app.gmail_service import GmailService
 
 logging.getLogger("httpx").setLevel(logging.WARNING)
 # Configure logging to include timestamps
@@ -57,6 +58,10 @@ async def spa_fallback(full_path: str):
 # Limit the thread pool size
 thread_pool = concurrent.futures.ThreadPoolExecutor(max_workers=2)  # Adjust max_workers as needed
 
+# set system variables
+save_system_value("loclal_model", "MultinomialNB")
+
+
 @app.on_event("startup")
 async def start_schedulers():
     async def periodic_fetch():
@@ -64,6 +69,17 @@ async def start_schedulers():
             try:
                 logging.info("⏰ Running scheduled fetch for last hour...")
                 fetch_last_hour_emails()  # Call directly since it's sync
+
+                gmail_service = GmailService(token_path="/data/token.json")
+                loop = asyncio.get_running_loop()
+                count = await loop.run_in_executor(
+                    thread_pool, gmail_service.get_unread_email_count
+                )  # ✅ now works with self
+                await loop.run_in_executor(
+                    thread_pool, save_system_value, "unread_email_count", count
+                )
+                logging.info(f"📬 Unread email count: {count}")
+
             except Exception as e:
                 logging.error(f"⚠️ Scheduled fetch failed: {e}")
             await asyncio.sleep(600)  # Sleep for 10 minutes
@@ -97,7 +113,7 @@ async def start_schedulers():
             except Exception as e:
                 logging.error(f"❌ Reputation recalculation failed: {e}")
 
-    # asyncio.create_task(periodic_fetch())
+    asyncio.create_task(periodic_fetch())
     # asyncio.create_task(midnight_task_runner())
     # asyncio.create_task(friday_reputation_recalculation())
 

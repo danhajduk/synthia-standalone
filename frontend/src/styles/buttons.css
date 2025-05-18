@@ -1,0 +1,35 @@
+/* File: src/styles/buttons.css */
+
+/* buttons.css */
+
+.synthia-button {
+  padding: 10px 16px;
+  background: linear-gradient(to bottom right, #2563eb, #0ea5e9); /* from-blue-600 to-sky-500 */
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: all 0.2s ease-in-out;
+  margin-bottom: 0.5rem;
+  margin-right: 0.5rem;
+}
+
+.synthia-button:hover {
+  background: linear-gradient(to bottom right, #3b82f6, #38bdf8); /* hover: lighter blue */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+.synthia-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+  .full-width {
+    width: 100%;
+  }
+    

@@ -43,24 +43,26 @@ def fetch_emails_since_midnight():
         logging.info(f"📥 Fetched {len(emails)} emails")
 
         # Insert emails into the database
-        conn = sqlite3.connect(db_path)
+        conn = sqlite3.connect(get_db_path())
         cursor = conn.cursor()
-        inserted = 0
+
         for email in emails:
             cursor.execute("""
-                INSERT OR IGNORE INTO emails (
-                    id, sender, sender_email, subject, body,  
-                    received_at, category, predicted_by
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO emails (id, sender, sender_email, subject, body, received_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    sender = excluded.sender,
+                    sender_email = excluded.sender_email,
+                    subject = excluded.subject,
+                    body = excluded.body,
+                    received_at = excluded.received_at
             """, (
-                email.get("id"),
-                email.get("sender"),
-                email.get("email"),
-                email.get("subject"),
-                email.get("body", ""),  # Add body field
-                email.get("received_at"),
-                email.get("category", "Uncategorized"),
-                email.get("predicted_by", "none")
+                email["id"],
+                email["sender"],
+                email["email"],
+                email["subject"],
+                email["body"],
+                email["received_at"]
             ))
             inserted += cursor.rowcount
 
@@ -99,15 +101,17 @@ def fetch_last_14_days():
 
             received_date = datetime.fromisoformat(received_str).date()
             if received_date >= end_date:
-                # Skip emails from today
-                continue
+                continue  # Skip emails from today
 
             cursor.execute("""
-                INSERT OR IGNORE INTO emails (
-                    id, sender, sender_email, subject, body,
-                    received_at, category, predicted_by,
-                    confidence, manual_override, override_timestamp, model_version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO emails (id, sender, sender_email, subject, body, received_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    sender = excluded.sender,
+                    sender_email = excluded.sender_email,
+                    subject = excluded.subject,
+                    body = excluded.body,
+                    received_at = excluded.received_at
             """, (
                 email.get("id"),
                 email.get("sender"),
@@ -115,12 +119,6 @@ def fetch_last_14_days():
                 email.get("subject"),
                 email.get("body", ""),
                 email.get("received_at"),
-                email.get("category", "Uncategorized"),
-                email.get("predicted_by"),
-                email.get("confidence"),
-                email.get("manual_override", 0),
-                email.get("override_timestamp"),
-                email.get("model_version")
             ))
             inserted += cursor.rowcount
 
@@ -163,11 +161,14 @@ def fetch_last_90_days():
                 continue
 
             cursor.execute("""
-                INSERT OR IGNORE INTO emails (
-                    id, sender, sender_email, subject, body,
-                    received_at, category, predicted_by,
-                    confidence, manual_override, override_timestamp, model_version
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO emails (id, sender, sender_email, subject, body, received_at)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(id) DO UPDATE SET
+                    sender = excluded.sender,
+                    sender_email = excluded.sender_email,
+                    subject = excluded.subject,
+                    body = excluded.body,
+                    received_at = excluded.received_at
             """, (
                 email.get("id"),
                 email.get("sender"),
@@ -175,12 +176,6 @@ def fetch_last_90_days():
                 email.get("subject"),
                 email.get("body", ""),
                 email.get("received_at"),
-                email.get("category", "Uncategorized"),
-                email.get("predicted_by"),
-                email.get("confidence"),
-                email.get("manual_override", 0),
-                email.get("override_timestamp"),
-                email.get("model_version")
             ))
             inserted += cursor.rowcount
 

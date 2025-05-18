@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import BaseButton from './buttons/BaseButton';
+import BaseButton from './BaseButton';
 
 export default function LinkButton({ label, icon, navigateTo, ...props }) {
   const navigate = useNavigate();

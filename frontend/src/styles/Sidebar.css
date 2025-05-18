@@ -1,0 +1,31 @@
+/* Sidebar.css */
+
+.sidebar {
+    padding: 1rem;
+    background-color: #1f2937; /* dark gray */
+    height: 100vh;
+    color: #d1d5db;
+    font-family: sans-serif;
+  }
+  
+  .nav-item {
+    cursor: pointer;
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+  
+  .nav-item:hover {
+    background-color: #374151;
+    color: #ffffff;
+  }
+  
+  .nav-item.active {
+    background-color: #1e40af; /* blue-800 */
+    color: white;
+    font-weight: 600;
+  }
+  

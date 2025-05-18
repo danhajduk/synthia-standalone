@@ -237,3 +237,22 @@ def save_system_value(key: str, value):
     """, (key, json.dumps(value)))
     conn.commit()
     conn.close()
+
+def get_system_value(key: str):
+    """
+    Retrieves the value of a system-wide setting from the 'system' table.
+    Returns None if the key is not found.
+    """
+    import sqlite3
+    import json
+    from app.utils.database import get_db_path  # adjust if local
+
+    conn = sqlite3.connect(get_db_path())
+    cursor = conn.cursor()
+    cursor.execute("SELECT value FROM system WHERE key = ?", (key,))
+    row = cursor.fetchone()
+    conn.close()
+
+    if row:
+        return json.loads(row[0])
+    return None

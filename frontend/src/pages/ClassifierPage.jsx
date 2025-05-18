@@ -1,19 +1,23 @@
+// File: src/pages/ClassifierPage.jsx
 import React from 'react';
 import Sidebar from '../components/Sidebar';
-import Header from '../components/Header';
 import SynthiaAvatar from '../components/SynthiaAvatar';
-import ClassifierBadges from '../components/ClassifierBadges';
 import ModelMetricsTable from '../components/ModelMetricsTable';
 import ClassifierControls from '../components/ClassifierControls';
 import ClassifierFetchControls from '../components/ClassifierFetchControls';
 import { useApiFetch } from '../hooks/useApiFetch';
 import { useBadgeStats } from '../hooks/useBadgeStats';
-import HeaderWrapper  from '../components/ClassifierWrapper';
+import HeaderWrapper from '../components/ClassifierWrapper';
+import '../index.css';
 
-
-export default function Classifier() {
-  const { data: metricsJson, loading: class_loading, error: class_error } = useApiFetch('/model/metrics');
-  const { data, loading, error, refresh } = useBadgeStats();
+export default function ClassifierPage() {
+  const { data: badgeStats, loading, error, refresh } = useBadgeStats();
+  const {
+    data: metricsJson,
+    loading: class_loading,
+    error: class_error,
+    refresh: refreshMetrics
+  } = useApiFetch('/model/metrics');
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
@@ -21,19 +25,18 @@ export default function Classifier() {
       <main style={{ flex: 1, padding: '1.5rem' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
           <SynthiaAvatar />
-          <HeaderWrapper/>
+          <HeaderWrapper stats={badgeStats} metrics={metricsJson} />
         </div>
+
         <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
           <div style={{ flex: 1 }}>
-          <ModelMetricsTable data={metricsJson || {}} />
-
+            <ModelMetricsTable data={metricsJson || {}} />
           </div>
-          <ClassifierControls onBadgeUpdate={refresh} />
 
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <ClassifierControls onBadgeUpdate={refresh} onRetrainSuccess={refreshMetrics} />
+          </div>
         </div>
-
-        <ClassifierFetchControls />
-
       </main>
     </div>
   );

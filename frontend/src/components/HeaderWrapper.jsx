@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import Header from './Header';
-import StatusBadge from './badges/StatusBadge';
-import MailBadge from './badges/MailBadge';
-import NotificationBadge from './badges/NotificationBadge';
-import SyncBadge from './badges/SyncBadge';
-import ClassifierBadge from './badges/ClassifierBadge';
+// import StatusBadge from './badges/StatusBadge';
+// import MailBadge from './badges/MailBadge';
+// import NotificationBadge from './badges/NotificationBadge';
+// import SyncBadge from './badges/SyncBadge';
+// import ClassifierBadge from './badges/ClassifierBadge';
+import { dashboardBadges } from './badges/dashboardBadges';
+import BadgeContainer from './badges/BadgeContainer';
+
+
 
 export default function HeaderWrapper() {
 
@@ -14,13 +18,12 @@ export default function HeaderWrapper() {
         <Header />
       </div>
 
-      <div className="w-2/12 flex flex-col items-end space-y-2">
-        <StatusBadge label="BackEnd" endpoint="/api/hello" statusKey="backend" fullWidth />
-        <NotificationBadge label="Alerts" value={0} fullWidth />
-        <MailBadge label="Unread" value={0} fullWidth />
-        <SyncBadge label="Last Synced" value={"09:29"} fullWidth />
-        <ClassifierBadge label="Model" value={0} fullWidth />
-      </div>
+      <BadgeContainer
+        direction="vertical"
+        align="end"
+        className="w-2/12"
+        badges={dashboardBadges}
+      />
     </div>
   );
 }

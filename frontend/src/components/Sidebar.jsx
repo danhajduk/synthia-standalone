@@ -1,33 +1,39 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { FaHome, FaEnvelope, FaCalendarAlt, FaBell, FaCog } from 'react-icons/fa';
+import '../styles/Sidebar.css'; // Import the stylesheet
 
 const Sidebar = () => {
   const navigate = useNavigate();
+  const location = useLocation();
 
   return (
     <aside className="sidebar">
-      <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '2rem' }}>
-        Synthia AI Assistant
-      </h1>
+      <div style={{ marginBottom: '1rem' }}>
+        <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '0.25rem' }}>
+          Synthia AI Assistant
+        </h1>
+        <div style={{ fontSize: '0.75rem', color: '#9ca3af', textAlign: 'right' }}>
+          v1.0.0
+        </div>
+      </div>
 
       <nav>
-        <NavItem icon={<FaHome />} label="Home Page" onClick={() => navigate('/')} />
-        <NavItem icon={<FaEnvelope />} label="Gmail Classifier" onClick={() => navigate('/classifier')} />
-        <NavItem icon={<FaCalendarAlt />} label="Calendar & Tasks" onClick={() => navigate('/calendar')} />
-        <NavItem icon={<FaBell />} label="Notifications" onClick={() => navigate('/notifications')} />
-        <NavItem icon={<FaCog />} label="Settings" onClick={() => navigate('/settings')} />
+        <NavItem icon={<FaHome />} label="Home Page" to="/" active={location.pathname === '/'} navigate={navigate} />
+        <NavItem icon={<FaEnvelope />} label="Gmail Classifier" to="/classifier" active={location.pathname === '/classifier'} navigate={navigate} />
+        <NavItem icon={<FaCalendarAlt />} label="Calendar & Tasks" to="/calendar" active={location.pathname === '/calendar'} navigate={navigate} />
+        <NavItem icon={<FaBell />} label="Notifications" to="/notifications" active={location.pathname === '/notifications'} navigate={navigate} />
+        <NavItem icon={<FaCog />} label="Settings" to="/settings" active={location.pathname === '/settings'} navigate={navigate} />
       </nav>
-
-      <div style={{ marginTop: 'auto', paddingTop: '2rem', fontSize: '0.75rem', color: '#9ca3af' }}>
-        Synthia v1.0.0
-      </div>
     </aside>
   );
 };
 
-const NavItem = ({ icon, label, onClick }) => (
-  <div className="nav-item" onClick={onClick} style={{ cursor: 'pointer' }}>
+const NavItem = ({ icon, label, to, navigate, active }) => (
+  <div
+    className={`nav-item ${active ? 'active' : ''}`}
+    onClick={() => navigate(to)}
+  >
     <span style={{ fontSize: '1.25rem' }}>{icon}</span>
     <span>{label}</span>
   </div>

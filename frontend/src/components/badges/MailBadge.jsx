@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-
+import BaseBadge from './BaseBadge';
 const COLOR_THRESHOLDS = [
   { limit: 0, color: '#9ca3af' },   // Gray: None
   { limit: 1, color: '#22c55e' },   // Green: Low
@@ -51,21 +51,14 @@ export default function MailBadge({
   const bg = getColor(count);
 
   return (
-    <div
-      title={label}
-      className={`flex items-center justify-between px-3 py-1 rounded-md text-gray-900 text-sm font-medium ${className}`}
-      style={{
-        backgroundColor: bg,
-        borderRadius: '0.5rem',
-        overflow: 'hidden',
-        minHeight: '2rem',
-        width: fullWidth ? '100%' : 'auto',
-        boxSizing: 'border-box',
-        marginBottom: '0.5rem'  // 👈 Add margin between badges
-      }}
-    >
-      <span>{icon}</span>
-      <span className="flex-1 text-left">{count !== null ? `${label} mails: ${count}` : '—'}</span>
-    </div>
+    <BaseBadge
+      icon={icon}
+      label={label}
+      value={count !== null ? `${label} mails: ${count}` : '—'}
+      backgroundColor={bg}
+      fullWidth={fullWidth}
+      className={className}
+      tooltip={label}
+    />
   );
-}
+  }
