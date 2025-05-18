@@ -7,3 +7,4 @@ data/
 deploy.sh
 *.sqlite
 external.sh
+*.sh
