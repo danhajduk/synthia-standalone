@@ -2,11 +2,12 @@
 import HomePage from './HomePage';
 import ClassifierPage from './ClassifierPage';
 import CalendarPage from './CalendarPage';
-
+import Notifications from './Notifications';
+import SettingsPage from './Settings';
 export const pageRegistry = {
   home: HomePage,
   classifier: ClassifierPage,
   calendar: CalendarPage,
-  notifications: () => <div>Notifications Coming Soon</div>,
-  settings: () => <div>Settings Coming Soon</div>
+  notifications: Notifications,
+  settings: SettingsPage
 };
